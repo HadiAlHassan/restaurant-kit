@@ -61,6 +61,8 @@ function createFakeApi(overrides: Partial<MenuApiClient> = {}): MenuApiClient {
     getAdminSignInUrl: vi.fn((returnTo?: string) => `https://api.example.com/api/admin/sign-in?returnTo=${encodeURIComponent(returnTo ?? "")}`),
     saveDraftMenu: vi.fn().mockResolvedValue({ etag: '"v2"' }),
     publishDraftMenu: vi.fn().mockResolvedValue({ ok: true, backupKey: null }),
+    listMenuBackups: vi.fn().mockResolvedValue([]),
+    restoreDraft: vi.fn().mockResolvedValue({ etag: '"v3"' }),
     uploadMenuImage: vi.fn().mockResolvedValue({ key: "k", url: "u" }),
     deleteMenuImage: vi.fn().mockResolvedValue(undefined),
     ...overrides,
@@ -492,17 +494,55 @@ describe("useAdminMenuDraft", () => {
     expect(api.publishDraftMenu).toHaveBeenCalledTimes(1);
   });
 
-  it("resets to the initial menu and marks it unsaved", async () => {
+  it("discards unsaved changes by reloading the remote draft", async () => {
     const api = createFakeApi();
     const { result } = renderDraft(api);
     await waitFor(() => expect(result.current.isLoadingDraft).toBe(false));
 
     act(() => {
-      result.current.resetDraft();
+      result.current.applyCommand({ type: "update-item", itemId: "item-1", patch: { title: "Scratch" } });
+    });
+    expect(result.current.hasUnsavedChanges).toBe(true);
+
+    act(() => {
+      result.current.discardChanges();
     });
 
-    expect(result.current.draftMenu).toEqual(initialMenu);
-    expect(result.current.hasUnsavedChanges).toBe(true);
+    await waitFor(() => expect(result.current.isLoadingDraft).toBe(false));
+    expect(api.getDraft).toHaveBeenCalledTimes(2);
+    expect(result.current.draftMenu).toEqual(remoteMenu);
+    expect(result.current.hasUnsavedChanges).toBe(false);
+  });
+
+  it("restores the draft from the published menu or a backup, then reloads it", async () => {
+    const api = createFakeApi();
+    const { result } = renderDraft(api);
+    await waitFor(() => expect(result.current.isLoadingDraft).toBe(false));
+
+    await act(async () => {
+      await result.current.restoreDraft({ kind: "published" });
+    });
+    await act(async () => {
+      await result.current.restoreDraft({ kind: "backup", key: "restaurants/demo/backups/published-2026-01-01T00-00-00-000Z.json" });
+    });
+
+    expect(api.restoreDraft).toHaveBeenNthCalledWith(1, { kind: "published" });
+    expect(api.restoreDraft).toHaveBeenNthCalledWith(2, { kind: "backup", key: "restaurants/demo/backups/published-2026-01-01T00-00-00-000Z.json" });
+    await waitFor(() => expect(api.getDraft).toHaveBeenCalledTimes(3));
+    expect(result.current.isRestoring).toBe(false);
+  });
+
+  it("keeps the current draft when a restore fails", async () => {
+    const api = createFakeApi({ restoreDraft: vi.fn().mockRejectedValue(new MenuApiError("Backup not found.", 404)) });
+    const { result } = renderDraft(api);
+    await waitFor(() => expect(result.current.isLoadingDraft).toBe(false));
+
+    await act(async () => {
+      await result.current.restoreDraft({ kind: "backup", key: "nope" });
+    });
+
+    expect(api.getDraft).toHaveBeenCalledTimes(1);
+    expect(result.current.draftMenu).toEqual(remoteMenu);
   });
 
   it("reloads the remote draft and clears auth errors on retry", async () => {

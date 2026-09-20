@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createMenuStorage, maxImageUploadBytes, normalizeEtag, type R2Bucket, type R2Object } from "./menuStorage";
+import { backupTimestampFromKey, createMenuStorage, maxImageUploadBytes, normalizeEtag, type R2Bucket, type R2Object } from "./menuStorage";
 
 type StoredObject = {
   readonly value: string | ArrayBuffer | ReadableStream;
@@ -41,10 +41,18 @@ function createFakeBucket(initial: Record<string, unknown> = {}) {
     delete: async (key) => {
       objects.delete(key);
     },
+    list: async ({ prefix, limit = 1000 }) => ({
+      objects: [...objects.entries()]
+        .filter(([key]) => key.startsWith(prefix))
+        .slice(0, limit)
+        .map(([key, stored]) => ({ key, size: String(stored.value).length, uploaded: new Date("2026-01-01T00:00:00Z") })),
+    }),
   };
 
   return { bucket, objects };
 }
+
+const backupKey = (stamp: string) => `restaurants/demo/backups/published-${stamp}.json`;
 
 const publishedKey = "restaurants/demo/published/menu.json";
 const draftKey = "restaurants/demo/draft/menu.json";
@@ -206,5 +214,51 @@ describe("images", () => {
 
     expect(await storage.deleteImage(publishedKey)).toBe(false);
     expect(objects.has(publishedKey)).toBe(true);
+  });
+});
+
+describe("backups and restore", () => {
+  it("parses publish timestamps out of backup keys", () => {
+    expect(backupTimestampFromKey(backupKey("2026-07-02T12-30-00-000Z"))).toBe("2026-07-02T12:30:00.000Z");
+    expect(backupTimestampFromKey("restaurants/demo/backups/other.json")).toBeNull();
+  });
+
+  it("lists backups newest first, ignoring other restaurants", async () => {
+    const { bucket } = createFakeBucket({
+      [backupKey("2026-01-01T00-00-00-000Z")]: publishedMenu,
+      [backupKey("2026-03-01T00-00-00-000Z")]: publishedMenu,
+      [backupKey("2026-02-01T00-00-00-000Z")]: publishedMenu,
+      "restaurants/other/backups/published-2026-04-01T00-00-00-000Z.json": publishedMenu,
+    });
+    const storage = createMenuStorage(bucket, "demo");
+
+    const backups = await storage.listBackups();
+    expect(backups.map((backup) => backup.publishedAt)).toEqual(["2026-03-01T00:00:00.000Z", "2026-02-01T00:00:00.000Z", "2026-01-01T00:00:00.000Z"]);
+    expect(backups[0].size).toBeGreaterThan(0);
+  });
+
+  it("restores the draft from the published menu and from a backup", async () => {
+    const backup = { ...publishedMenu, items: [{ id: "old" }] };
+    const { bucket } = createFakeBucket({ [publishedKey]: publishedMenu, [draftKey]: draftMenu, [backupKey("2026-01-01T00-00-00-000Z")]: backup });
+    const storage = createMenuStorage(bucket, "demo");
+
+    const fromPublished = await storage.restoreDraft({ kind: "published" });
+    expect(fromPublished.status).toBe("restored");
+    expect(((await storage.getDraft())?.menu as { items: unknown[] }).items).toEqual([]);
+
+    const fromBackup = await storage.restoreDraft({ kind: "backup", key: backupKey("2026-01-01T00-00-00-000Z") });
+    expect(fromBackup.status).toBe("restored");
+    expect(((await storage.getDraft())?.menu as { items: unknown[] }).items).toEqual([{ id: "old" }]);
+  });
+
+  it("refuses keys outside the backup prefix and reports missing sources", async () => {
+    const { bucket } = createFakeBucket({ [draftKey]: draftMenu });
+    const storage = createMenuStorage(bucket, "demo");
+
+    expect(await storage.restoreDraft({ kind: "backup", key: publishedKey })).toEqual({ status: "invalid-key" });
+    expect(await storage.restoreDraft({ kind: "backup", key: "restaurants/other/backups/published-x.json" })).toEqual({ status: "invalid-key" });
+    expect(await storage.restoreDraft({ kind: "published" })).toEqual({ status: "not-found" });
+    expect(await storage.restoreDraft({ kind: "backup", key: backupKey("2099-01-01T00-00-00-000Z") })).toEqual({ status: "not-found" });
+    expect((await storage.getDraft())?.menu).toEqual(draftMenu);
   });
 });

@@ -35,6 +35,14 @@ export type SaveDraftOptions = {
   readonly ifMatch?: string | null;
 };
 
+export type MenuBackup = {
+  readonly key: string;
+  readonly publishedAt: string;
+  readonly size: number;
+};
+
+export type RestoreDraftSource = { readonly kind: "published" } | { readonly kind: "backup"; readonly key: string };
+
 export type MenuApiClient = {
   readonly getPublishedMenu: () => Promise<DynamicMenu>;
   readonly getDraftMenu: () => Promise<DynamicMenu>;
@@ -45,6 +53,9 @@ export type MenuApiClient = {
   readonly signOut: () => Promise<void>;
   readonly saveDraftMenu: (menu: DynamicMenu, options?: SaveDraftOptions) => Promise<{ readonly etag: string | null }>;
   readonly publishDraftMenu: () => Promise<PublishResult>;
+  readonly listMenuBackups: () => Promise<readonly MenuBackup[]>;
+  /** Replaces the remote draft with the published menu or a backup. Reload the draft afterwards. */
+  readonly restoreDraft: (source: RestoreDraftSource) => Promise<{ readonly etag: string | null }>;
   readonly uploadMenuImage: (file: File) => Promise<MenuImageUpload>;
   readonly deleteMenuImage: (key: string) => Promise<void>;
 };
@@ -114,6 +125,20 @@ export function createMenuApiClient(options: MenuApiClientOptions = {}): MenuApi
       requestJson<PublishResult>(fetcher, adminUrl(apiBaseUrl, "/api/admin/menu/publish"), {
         method: "POST",
       }),
+    listMenuBackups: async () => {
+      const { backups } = await requestJson<{ readonly backups: readonly MenuBackup[] }>(fetcher, adminUrl(apiBaseUrl, "/api/admin/menu/backups"));
+      return backups;
+    },
+    restoreDraft: async (source) => {
+      const { body } = await requestJsonWithResponse<{ readonly ok: true; readonly etag?: string | null }>(fetcher, adminUrl(apiBaseUrl, "/api/admin/menu/restore"), {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(source.kind === "published" ? { source: "published" } : { source: "backup", key: source.key }),
+      });
+      return { etag: body.etag ?? null };
+    },
     uploadMenuImage: (file) => {
       const formData = new FormData();
       formData.set("file", file);

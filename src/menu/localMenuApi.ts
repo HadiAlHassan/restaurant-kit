@@ -31,6 +31,12 @@ export function createLocalMenuApiClient(initialMenu: DynamicMenu, storageKey: s
       return { etag: null };
     },
     publishDraftMenu: async (): Promise<PublishResult> => ({ ok: true, backupKey: null }),
+    listMenuBackups: async () => [],
+    // Local dev has no publish history; "published" means the bundled seed.
+    restoreDraft: async () => {
+      writeMenuDraft(initialMenu, storageKey);
+      return { etag: null };
+    },
     uploadMenuImage: async (file): Promise<MenuImageUpload> => {
       const url = await fileToDataUrl(file);
       return {

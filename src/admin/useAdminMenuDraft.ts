@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useRestaurantKit } from "../config/siteConfigContext";
-import type { AdminSession, MenuApiClient } from "../menu/menuApi";
+import type { AdminSession, MenuApiClient, MenuBackup, RestoreDraftSource } from "../menu/menuApi";
 import { updateMenuItem } from "../menu/menuMutations";
 import type { DynamicMenu, MenuItem } from "../menu/menuSchema";
 import { getApiErrorMessage, isLikelyAuthError } from "./adminEditorUtils";
@@ -33,7 +33,12 @@ export type AdminMenuDraft = {
   readonly signOut: () => Promise<void>;
   readonly saveDraft: () => Promise<void>;
   readonly publishDraft: () => Promise<void>;
-  readonly resetDraft: () => void;
+  /** Drops unsaved edits by reloading the remote draft. */
+  readonly discardChanges: () => void;
+  /** Overwrites the remote draft with the published menu or a backup, then reloads it. */
+  readonly restoreDraft: (source: RestoreDraftSource) => Promise<void>;
+  readonly listBackups: () => Promise<readonly MenuBackup[]>;
+  readonly isRestoring: boolean;
   readonly applyMenuMutation: (mutateMenu: (menu: DynamicMenu) => DynamicMenu) => void;
   readonly applyCommand: (command: AdminMenuCommand) => AdminMenuCommandRejection | null;
   readonly uploadingItemIds: ReadonlySet<string>;
@@ -243,10 +248,35 @@ export function useAdminMenuDraft(options: UseAdminMenuDraftOptions = {}): Admin
     }
   }, [menuApi, runSave]);
 
-  const resetDraft = useCallback(() => {
-    commit({ type: "set", menu: initialMenu });
-    toast.success("Draft reset locally", { description: isLocalApi ? "Save draft to update this browser." : "Save draft to update the remote draft menu." });
-  }, [commit, initialMenu, isLocalApi]);
+  const discardChanges = useCallback(() => {
+    loadRemoteDraft();
+    toast.success("Unsaved changes discarded");
+  }, [loadRemoteDraft]);
+
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  const restoreDraft = useCallback(
+    async (source: RestoreDraftSource) => {
+      setIsRestoring(true);
+
+      try {
+        await menuApi.restoreDraft(source);
+        loadRemoteDraft();
+        toast.success(source.kind === "published" ? "Draft restored from the published menu" : "Draft restored from backup", {
+          description: "Review it, then publish to make it live.",
+        });
+      } catch (error) {
+        toast.error("Could not restore the draft", {
+          description: getApiErrorMessage(error),
+        });
+      } finally {
+        setIsRestoring(false);
+      }
+    },
+    [loadRemoteDraft, menuApi],
+  );
+
+  const listBackups = useCallback(() => menuApi.listMenuBackups(), [menuApi]);
 
   const applyCommand = useCallback(
     (command: AdminMenuCommand): AdminMenuCommandRejection | null => {
@@ -347,7 +377,7 @@ export function useAdminMenuDraft(options: UseAdminMenuDraftOptions = {}): Admin
     isLoadingDraft,
     isSavingDraft,
     isPublishingDraft,
-    isBusy: isLoadingDraft || isSavingDraft || isPublishingDraft,
+    isBusy: isLoadingDraft || isSavingDraft || isPublishingDraft || isRestoring,
     authErrorMessage,
     authSession,
     isSigningIn,
@@ -357,7 +387,10 @@ export function useAdminMenuDraft(options: UseAdminMenuDraftOptions = {}): Admin
     signOut,
     saveDraft,
     publishDraft,
-    resetDraft,
+    discardChanges,
+    restoreDraft,
+    listBackups,
+    isRestoring,
     applyMenuMutation,
     applyCommand,
     uploadingItemIds,

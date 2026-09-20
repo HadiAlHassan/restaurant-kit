@@ -1,10 +1,11 @@
 import { move } from "@dnd-kit/helpers";
 import { DragDropProvider, type DragEndEvent } from "@dnd-kit/react";
-import { LogOut, Plus, RotateCcw, Save, Send } from "lucide-react";
+import { History, LogOut, Plus, RotateCcw, Save, Send, Undo2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { AdminActionItem, AdminActionMenu } from "../admin/AdminActionMenu";
+import { AdminActionItem, AdminActionMenu, AdminActionSeparator } from "../admin/AdminActionMenu";
+import { AdminBackupsDialog } from "../admin/AdminBackupsDialog";
 import { AdminAuthPanel } from "../admin/AdminAuthPanel";
 import { AdminGroupsPanel } from "../admin/AdminGroupsPanel";
 import { AdminItemDrawer } from "../admin/AdminItemDrawer";
@@ -34,7 +35,9 @@ export function AdminMenuEditor() {
     signOut,
     saveDraft,
     publishDraft,
-    resetDraft: resetDraftMenu,
+    discardChanges,
+    restoreDraft,
+    listBackups,
     applyCommand,
     uploadingItemIds,
     uploadItemImage,
@@ -45,6 +48,7 @@ export function AdminMenuEditor() {
   const [editingGroupId, setEditingGroupId] = useState("");
   const [reorderingSectionId, setReorderingSectionId] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
+  const [isBackupsOpen, setIsBackupsOpen] = useState(false);
 
   const orderedMenu = useMemo(() => getOrderedMenu(draftMenu), [draftMenu]);
   const visibleGroups = useMemo(() => orderedMenu.groups.map(({ group }) => group), [orderedMenu]);
@@ -222,12 +226,29 @@ export function AdminMenuEditor() {
     }
   };
 
-  const resetDraft = () => {
-    resetDraftMenu();
+  const clearEditingState = () => {
     setActiveGroupId("all");
     setEditingItemId("");
     setEditingGroupId("");
     setReorderingSectionId("");
+  };
+
+  const discardUnsaved = () => {
+    if (!window.confirm("Discard your unsaved changes and reload the saved draft?")) return;
+    clearEditingState();
+    discardChanges();
+  };
+
+  const restoreFromPublished = () => {
+    if (!window.confirm("Replace the draft with the menu customers see right now? Unsaved edits are lost.")) return;
+    clearEditingState();
+    void restoreDraft({ kind: "published" });
+  };
+
+  const restoreFromBackup = (key: string) => {
+    clearEditingState();
+    setIsBackupsOpen(false);
+    void restoreDraft({ kind: "backup", key });
   };
 
   const toggleReorderSection = (categoryId: string) => {
@@ -262,14 +283,18 @@ export function AdminMenuEditor() {
                   Sign out
                 </AdminActionItem>
               ) : null}
-              <AdminActionItem
-                isDanger
-                onSelect={() => {
-                  if (window.confirm("Reset the local draft to the bundled seed menu? Your remote draft is untouched until you save.")) resetDraft();
-                }}
-              >
+              <AdminActionItem disabled={!hasUnsavedChanges || isBusy} onSelect={discardUnsaved}>
+                <Undo2 aria-hidden="true" />
+                Discard unsaved changes
+              </AdminActionItem>
+              <AdminActionSeparator />
+              <AdminActionItem disabled={isBusy} onSelect={restoreFromPublished}>
                 <RotateCcw aria-hidden="true" />
-                Reset draft to seed
+                Restore last published
+              </AdminActionItem>
+              <AdminActionItem disabled={isBusy} onSelect={() => setIsBackupsOpen(true)}>
+                <History aria-hidden="true" />
+                Roll back to a backup…
               </AdminActionItem>
             </AdminActionMenu>
           </div>
@@ -355,6 +380,8 @@ export function AdminMenuEditor() {
             )}
           </div>
         </section>
+
+        {isBackupsOpen ? <AdminBackupsDialog listBackups={listBackups} onClose={() => setIsBackupsOpen(false)} onRestore={restoreFromBackup} /> : null}
 
         {editingItem ? (
           <AdminItemDrawer

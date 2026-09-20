@@ -226,6 +226,11 @@ image prefix; served with a content type from the image allowlist or as an opaqu
 `GET /api/admin/sign-in` (Access redirect), `GET|PUT /api/admin/menu/draft`,
 `POST /api/admin/menu/publish`, `POST|DELETE /api/admin/images`.
 
+`GET /api/admin/menu/backups` lists the copies written on each publish (newest first);
+`POST /api/admin/menu/restore` with `{ source: "published" }` or `{ source: "backup", key }`
+overwrites the draft from that copy. The editor exposes these as *Discard unsaved changes*,
+*Restore last published*, and *Roll back to a backup…*; nothing goes live until you publish.
+
 `GET /api/admin/menu/draft` returns the draft's `etag`; the editor sends it back as
 `If-Match` on `PUT`, and the Worker answers `412` when the draft changed in between (two
 tabs, two admins). Uploads accept JPEG/PNG/WebP/AVIF/GIF up to 5 MB (`415` / `413`

@@ -140,6 +140,46 @@ describe("draft concurrency", () => {
   });
 });
 
+describe("backups and restore routes", () => {
+  it("lists backups and restores the draft for an authenticated admin", async () => {
+    const env = await passwordEnv();
+    const login = await worker.fetch(jsonRequest("https://demo-restaurant.com/api/admin/login", "POST", { password: "open sesame" }), env);
+    const cookie = (login.headers.get("set-cookie") ?? "").split(";")[0];
+    const backupKey = "restaurants/demo/backups/published-2026-01-01T00-00-00-000Z.json";
+    const bucket = {
+      ...env.MENU_BUCKET,
+      list: vi.fn().mockResolvedValue({ objects: [{ key: backupKey, size: 42, uploaded: new Date("2026-01-01T00:00:00Z") }] }),
+      get: vi.fn().mockImplementation(async (key: string) => (key === backupKey ? { body: new Response(JSON.stringify({ schemaVersion: 1, groups: [], categories: [], items: [] })).body, httpEtag: '"b"', writeHttpMetadata: () => undefined } : null)),
+      put: vi.fn().mockResolvedValue({ httpEtag: '"new"' }),
+    };
+    const routeEnv: Env = { ...env, MENU_BUCKET: bucket };
+
+    const list = await worker.fetch(new Request("https://demo-restaurant.com/api/admin/menu/backups", { headers: { cookie } }), routeEnv);
+    expect(list.status).toBe(200);
+    await expect(list.json()).resolves.toEqual({ backups: [{ key: backupKey, publishedAt: "2026-01-01T00:00:00.000Z", size: 42 }] });
+
+    const restore = await worker.fetch(jsonRequest("https://demo-restaurant.com/api/admin/menu/restore", "POST", { source: "backup", key: backupKey }, { cookie }), routeEnv);
+    expect(restore.status).toBe(200);
+    await expect(restore.json()).resolves.toEqual({ ok: true, etag: '"new"' });
+    expect(bucket.put).toHaveBeenCalledWith("restaurants/demo/draft/menu.json", expect.any(String), expect.anything());
+
+    const missing = await worker.fetch(jsonRequest("https://demo-restaurant.com/api/admin/menu/restore", "POST", { source: "published" }, { cookie }), routeEnv);
+    expect(missing.status).toBe(404);
+
+    const bad = await worker.fetch(jsonRequest("https://demo-restaurant.com/api/admin/menu/restore", "POST", { source: "backup", key: "restaurants/demo/draft/menu.json" }, { cookie }), routeEnv);
+    expect(bad.status).toBe(400);
+
+    const malformed = await worker.fetch(jsonRequest("https://demo-restaurant.com/api/admin/menu/restore", "POST", { source: "seed" }, { cookie }), routeEnv);
+    expect(malformed.status).toBe(400);
+  });
+
+  it("gates backups and restore behind auth", async () => {
+    const env = await passwordEnv();
+    expect((await worker.fetch(new Request("https://demo-restaurant.com/api/admin/menu/backups"), env)).status).toBe(401);
+    expect((await worker.fetch(jsonRequest("https://demo-restaurant.com/api/admin/menu/restore", "POST", { source: "published" }), env)).status).toBe(401);
+  });
+});
+
 describe("error handling", () => {
   it("answers 400 JSON for a malformed draft body instead of throwing", async () => {
     const env = await passwordEnv();

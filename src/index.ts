@@ -35,6 +35,8 @@ export {
   type AdminAuthStrategy,
   type AdminSession,
   type MenuApiClient,
+  type MenuBackup,
+  type RestoreDraftSource,
   type MenuApiClientOptions,
   type MenuImageUpload,
   type PublishResult,

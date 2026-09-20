@@ -98,6 +98,25 @@ describe("menu API client", () => {
     await expect(client.saveDraftMenu(menu)).rejects.toMatchObject({ status: 412, message: "The draft was changed elsewhere. Reload the editor to get the latest version." });
   });
 
+  it("lists backups and posts a restore request", async () => {
+    const backups = [{ key: "restaurants/demo/backups/published-2026-01-01T00-00-00-000Z.json", publishedAt: "2026-01-01T00:00:00.000Z", size: 42 }];
+    const fetcher = vi.fn<MockFetch>().mockResolvedValueOnce(jsonResponse({ backups })).mockResolvedValueOnce(jsonResponse({ ok: true, etag: '"r"' })).mockResolvedValueOnce(jsonResponse({ ok: true }));
+    const client = createMenuApiClient({ fetcher });
+
+    await expect(client.listMenuBackups()).resolves.toEqual(backups);
+    await expect(client.restoreDraft({ kind: "backup", key: backups[0].key })).resolves.toEqual({ etag: '"r"' });
+    await expect(client.restoreDraft({ kind: "published" })).resolves.toEqual({ etag: null });
+
+    expect(fetcher).toHaveBeenNthCalledWith(1, "/api/admin/menu/backups", { credentials: "include" });
+    expect(fetcher).toHaveBeenNthCalledWith(2, "/api/admin/menu/restore", {
+      credentials: "include",
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ source: "backup", key: backups[0].key }),
+    });
+    expect(fetcher).toHaveBeenNthCalledWith(3, "/api/admin/menu/restore", expect.objectContaining({ body: JSON.stringify({ source: "published" }) }));
+  });
+
   it("reads the admin session", async () => {
     const fetcher = vi.fn<MockFetch>().mockResolvedValue(jsonResponse({ authenticated: false, strategy: "password", user: null }));
     const client = createMenuApiClient({ fetcher });

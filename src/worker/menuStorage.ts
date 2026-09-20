@@ -16,11 +16,31 @@ export type R2PutResult = {
   readonly httpEtag: string;
 };
 
+export type R2ListedObject = {
+  readonly key: string;
+  readonly size: number;
+  readonly uploaded: Date;
+};
+
 export type R2Bucket = {
   readonly get: (key: string) => Promise<R2Object | null>;
   readonly put: (key: string, value: string | ArrayBuffer | ReadableStream, options?: R2PutOptions) => Promise<R2PutResult | null | undefined | unknown>;
   readonly delete: (key: string) => Promise<void>;
+  readonly list?: (options: { readonly prefix: string; readonly limit?: number }) => Promise<{ readonly objects: readonly R2ListedObject[] }>;
 };
+
+export type MenuBackup = {
+  readonly key: string;
+  /** ISO timestamp of the publish that this backup preceded. */
+  readonly publishedAt: string;
+  readonly size: number;
+};
+
+export type RestoreSource = { readonly kind: "published" } | { readonly kind: "backup"; readonly key: string };
+
+export type RestoreDraftResult = { readonly status: "restored"; readonly etag: string | null } | { readonly status: "not-found" } | { readonly status: "invalid-key" };
+
+const maxListedBackups = 30;
 
 /** Browser-reported MIME types accepted for menu images; anything else is rejected with 415. */
 export const allowedImageTypes: ReadonlySet<string> = new Set(["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"]);
@@ -47,6 +67,10 @@ export type MenuStorage = {
   readonly publishDraft: () => Promise<PublishResult>;
   readonly uploadImage: (file: File) => Promise<{ key: string }>;
   readonly deleteImage: (key: string) => Promise<boolean>;
+  /** Backups written by publishDraft, newest first. */
+  readonly listBackups: () => Promise<readonly MenuBackup[]>;
+  /** Overwrites the draft with the published menu or one of its backups. */
+  readonly restoreDraft: (source: RestoreSource) => Promise<RestoreDraftResult>;
 };
 
 function menuKeys(restaurantId: string) {
@@ -56,8 +80,17 @@ function menuKeys(restaurantId: string) {
     published: `${base}/published/menu.json`,
     draft: `${base}/draft/menu.json`,
     backup: `${base}/backups/published-${new Date().toISOString().replace(/[:.]/g, "-")}.json`,
+    backupPrefix: `${base}/backups/`,
     imagePrefix: `${base}/images/menu`,
   };
+}
+
+/** `published-2026-07-02T12-30-00-000Z.json` → `2026-07-02T12:30:00.000Z`; null when the key is not ours. */
+export function backupTimestampFromKey(key: string) {
+  const match = key.match(/published-(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z\.json$/);
+  if (!match) return null;
+  const [, date, hours, minutes, seconds, millis] = match;
+  return `${date}T${hours}:${minutes}:${seconds}.${millis}Z`;
 }
 
 /** HTTP etags arrive quoted (and possibly weak); R2's `etagMatches` wants the bare value. */
@@ -147,6 +180,30 @@ export function createMenuStorage(bucket: R2Bucket, restaurantId: string): MenuS
 
       await bucket.delete(key);
       return true;
+    },
+    listBackups: async () => {
+      if (!bucket.list) return [];
+      const { backupPrefix } = menuKeys(restaurantId);
+      const { objects } = await bucket.list({ prefix: backupPrefix, limit: 1000 });
+
+      return objects
+        .map((object) => ({ key: object.key, publishedAt: backupTimestampFromKey(object.key) ?? object.uploaded.toISOString(), size: object.size }))
+        .sort((first, second) => second.publishedAt.localeCompare(first.publishedAt))
+        .slice(0, maxListedBackups);
+    },
+    restoreDraft: async (source) => {
+      const keys = menuKeys(restaurantId);
+      let sourceKey = keys.published;
+      if (source.kind === "backup") {
+        if (!source.key.startsWith(keys.backupPrefix) || source.key.includes("..")) return { status: "invalid-key" };
+        sourceKey = source.key;
+      }
+
+      const menu = await readJsonObject(bucket, sourceKey);
+      if (!menu) return { status: "not-found" };
+
+      const written = await writeJsonObject(bucket, keys.draft, { ...(menu as object), updatedAt: new Date().toISOString() });
+      return { status: "restored", etag: written?.etag ?? null };
     },
   };
 }

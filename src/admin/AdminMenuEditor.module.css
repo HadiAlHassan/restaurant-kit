@@ -1737,3 +1737,74 @@
 .fieldGroup .chipField::placeholder {
   color: var(--restaurant-stroke-hover);
 }
+
+.backupsDialog {
+  width: min(560px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--restaurant-stroke);
+  border-radius: 10px;
+  background: var(--restaurant-surface);
+  color: var(--restaurant-text);
+  box-shadow: 0 22px 70px var(--restaurant-shadow-soft);
+}
+
+.backupsDialog::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+}
+
+.backupsHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 20px 12px;
+}
+
+.backupsHeader h2 {
+  margin: 4px 0 6px;
+  font-family: "Space Grotesk", "Inter", sans-serif;
+  font-size: 1.4rem;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.backupsHeader p {
+  margin: 0;
+  color: var(--restaurant-muted);
+  font-size: 0.9rem;
+}
+
+.backupsList {
+  display: grid;
+  gap: 8px;
+  max-height: min(60vh, 480px);
+  padding: 0 20px 20px;
+  overflow-y: auto;
+}
+
+.backupRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--restaurant-stroke);
+  border-radius: 8px;
+  background: var(--restaurant-surface-raised);
+}
+
+.backupRow strong {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.backupRow small {
+  color: var(--restaurant-muted);
+}
+
+.backupsEmpty {
+  margin: 0;
+  padding: 0 20px 20px;
+  color: var(--restaurant-muted);
+}

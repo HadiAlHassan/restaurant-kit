@@ -1,6 +1,6 @@
 import { buildClearedSessionCookie, getAdminIdentity, getAdminSessionInfo, isTrustedOrigin, loginWithPassword, resolveAdminAuthStrategy, type AuthEnv } from "./auth";
 import { getCorsHeaders, getSafeReturnTo, jsonResponse, redirectResponse, RequestError } from "./http";
-import { allowedImageTypes, createMenuStorage, type MenuStorage, type R2Bucket } from "./menuStorage";
+import { allowedImageTypes, createMenuStorage, type MenuStorage, type R2Bucket, type RestoreSource } from "./menuStorage";
 
 type AssetsBinding = {
   fetch(request: Request): Promise<Response>;
@@ -103,6 +103,25 @@ async function handleDraftMenu(request: Request, storage: MenuStorage, corsHeade
   return jsonResponse({ error: "Method not allowed." }, { status: 405 }, corsHeaders);
 }
 
+async function handleBackups(storage: MenuStorage, corsHeaders: Record<string, string>) {
+  const backups = await storage.listBackups();
+  return jsonResponse({ backups }, { headers: noStoreHeaders }, corsHeaders);
+}
+
+async function handleRestore(request: Request, storage: MenuStorage, corsHeaders: Record<string, string>) {
+  const body = (await readJsonBody(request)) as { source?: unknown; key?: unknown };
+  let source: RestoreSource;
+  if (body.source === "published") source = { kind: "published" };
+  else if (body.source === "backup" && typeof body.key === "string" && body.key) source = { kind: "backup", key: body.key };
+  else throw new RequestError('Expected { source: "published" } or { source: "backup", key }.', 400);
+
+  const result = await storage.restoreDraft(source);
+  if (result.status === "invalid-key") throw new RequestError("Backup key is outside this restaurant's backups.", 400);
+  if (result.status === "not-found") return jsonResponse({ error: source.kind === "published" ? "Nothing has been published yet." : "Backup not found." }, { status: 404 }, corsHeaders);
+
+  return jsonResponse({ ok: true, etag: result.etag }, { headers: { ...noStoreHeaders, ...(result.etag ? { etag: result.etag } : {}) } }, corsHeaders);
+}
+
 async function handlePublish(storage: MenuStorage, corsHeaders: Record<string, string>) {
   const result = await storage.publishDraft();
   if (result.status === "no-draft") return jsonResponse({ error: "Draft menu not found." }, { status: 404 }, corsHeaders);
@@ -191,6 +210,8 @@ export default {
 
       if (url.pathname === "/api/admin/menu/draft") return await handleDraftMenu(request, storage, corsHeaders);
       if (request.method === "POST" && url.pathname === "/api/admin/menu/publish") return await handlePublish(storage, corsHeaders);
+      if (request.method === "GET" && url.pathname === "/api/admin/menu/backups") return await handleBackups(storage, corsHeaders);
+      if (request.method === "POST" && url.pathname === "/api/admin/menu/restore") return await handleRestore(request, storage, corsHeaders);
       if (request.method === "POST" && url.pathname === "/api/admin/images") return await handleImageUpload(request, storage, corsHeaders);
       if (request.method === "DELETE" && url.pathname === "/api/admin/images") return await handleImageDelete(request, storage, corsHeaders);
 
