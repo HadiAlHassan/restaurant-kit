@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createMenuStorage, maxImageUploadBytes, type R2Bucket, type R2Object } from "./menuStorage";
+import { createMenuStorage, maxImageUploadBytes, normalizeEtag, type R2Bucket, type R2Object } from "./menuStorage";
 
 type StoredObject = {
   readonly value: string | ArrayBuffer | ReadableStream;
@@ -30,7 +30,9 @@ function createFakeBucket(initial: Record<string, unknown> = {}) {
     },
     put: async (key, value, options) => {
       const etagMatches = options?.onlyIf?.etagMatches;
-      if (etagMatches && objects.get(key)?.etag !== etagMatches) return null;
+      // Real R2 compares against the bare etag and rejects a quoted one; mirror that strictly.
+      if (etagMatches?.startsWith('"')) throw new Error("etagMatches must be unquoted");
+      if (etagMatches && normalizeEtag(objects.get(key)?.etag ?? "") !== etagMatches) return null;
 
       const stored = { value, contentType: options?.httpMetadata?.contentType, etag: nextEtag() };
       objects.set(key, stored);
@@ -58,6 +60,12 @@ describe("menu json storage", () => {
 
     expect(await storage.getPublished()).toEqual(publishedMenu);
     expect(await storage.getDraft()).toEqual({ menu: draftMenu, etag: '"v2"' });
+  });
+
+  it("strips quotes and weak markers from etags", () => {
+    expect(normalizeEtag('"abc"')).toBe("abc");
+    expect(normalizeEtag('W/"abc"')).toBe("abc");
+    expect(normalizeEtag(" abc ")).toBe("abc");
   });
 
   it("rejects a draft save whose If-Match etag is stale", async () => {

@@ -136,7 +136,7 @@ describe("draft concurrency", () => {
 
     const stale = await worker.fetch(jsonRequest("https://demo-restaurant.com/api/admin/menu/draft", "PUT", { schemaVersion: 1, groups: [], categories: [], items: [] }, { cookie, "if-match": '"v0"' }), conflictEnv);
     expect(stale.status).toBe(412);
-    expect(bucket.put).toHaveBeenCalledWith(expect.any(String), expect.any(String), expect.objectContaining({ onlyIf: { etagMatches: '"v0"' } }));
+    expect(bucket.put).toHaveBeenCalledWith(expect.any(String), expect.any(String), expect.objectContaining({ onlyIf: { etagMatches: "v0" } }));
   });
 });
 

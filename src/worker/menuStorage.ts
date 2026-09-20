@@ -60,6 +60,11 @@ function menuKeys(restaurantId: string) {
   };
 }
 
+/** HTTP etags arrive quoted (and possibly weak); R2's `etagMatches` wants the bare value. */
+export function normalizeEtag(etag: string) {
+  return etag.trim().replace(/^W\//i, "").replace(/^"(.*)"$/, "$1");
+}
+
 function normalizeFilename(name: string) {
   return (
     name
@@ -108,7 +113,7 @@ export function createMenuStorage(bucket: R2Bucket, restaurantId: string): MenuS
       return bucket.get(key);
     },
     saveDraft: async (menu, options = {}) => {
-      const onlyIf = options.ifMatch ? { etagMatches: options.ifMatch } : undefined;
+      const onlyIf = options.ifMatch ? { etagMatches: normalizeEtag(options.ifMatch) } : undefined;
       const written = await writeJsonObject(bucket, menuKeys(restaurantId).draft, { ...menu, updatedAt: new Date().toISOString() }, onlyIf);
       if (!written) return { status: "conflict" };
       return { status: "saved", etag: written.etag };
