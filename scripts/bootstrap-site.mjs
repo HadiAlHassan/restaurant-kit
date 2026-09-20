@@ -85,7 +85,8 @@ if (!args["skip-secrets"]) {
 
 if (!args["skip-dry-run"]) {
   step(`Deploy dry run (${label})`);
-  wrangler(["deploy", "--dry-run", ...envFlag], { allowFailure: true });
+  // `--env=` targets the top-level (production) config explicitly; wrangler warns when envs exist and none is named.
+  wrangler(["deploy", "--dry-run", ...(args.env ? envFlag : ["--env="])], { allowFailure: true });
 }
 
 step("Remaining manual steps");
@@ -95,7 +96,7 @@ console.log(
     "2. DNS: a hostname you list as `custom_domain = true` must have NO existing A/AAAA/CNAME record,",
     "   or the deploy fails with 409. Delete the record, or use a zone route (`pattern = \"host/*\"`).",
     "3. Old Pages project on the same hostname? Remove its custom domain first.",
-    `4. Deploy: npx wrangler deploy${args.env ? ` --env ${args.env}` : ""}`,
+    `4. Deploy: npx wrangler deploy --env${args.env ? ` ${args.env}` : '=""'}`,
     '5. Check: curl -s https://<host>/api/admin/session  →  {"strategy":"password",...}',
   ].join("\n"),
 );

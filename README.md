@@ -170,7 +170,7 @@ namespace_id = "1001"
 simple = { limit = 5, period = 60 }
 ```
 
-Then `vite build && wrangler deploy`. Secrets are set once, never in the toml:
+Then `vite build && wrangler deploy --env=""`. Secrets are set once, never in the toml:
 
 ```bash
 npx restaurant-kit-hash-password        # prints the ADMIN_PASSWORD_HASH value
@@ -207,10 +207,8 @@ the editor renders the matching sign-in UI.
 **password** (default for new sites): the owner enters a password on `/admin`; the Worker
 verifies it against the PBKDF2-SHA256 hash and sets an `HttpOnly; SameSite=Lax; Secure`
 cookie (`rk_admin_session`) holding an HMAC-signed token. No Zero Trust, no Access
-applications, no extra Cloudflare product. Rotate the password by re-running the hash
-script and `wrangler secret put` — that also signs every device out, because the session
-signing key is derived from the session secret *and* the password hash. Rotate
-`ADMIN_SESSION_SECRET` to invalidate sessions without changing the password.
+applications, no extra Cloudflare product. See
+[Changing the admin password](#changing-the-admin-password) for rotation.
 
 **access** (legacy): trusts the `cf-access-authenticated-user-email` header. Only safe when
 a Cloudflare Access application fronts every route that reaches the Worker, which is why
@@ -272,6 +270,44 @@ npx wrangler deploy --env staging
 stores both secrets on the right env, then dry-runs the deploy and prints the DNS checklist.
 Same command without `--env` provisions a brand-new production site. Keep `preview_urls`
 off: version previews inherit production bindings, so they would edit the production draft.
+
+Once a `[env.staging]` block exists, a bare `wrangler deploy` warns that no target
+environment was specified. Name production explicitly with an empty env — the site's
+`deploy` script should read `wrangler deploy --env=""` (the bootstrap dry run does the same).
+
+### Changing the admin password
+
+There is no "forgot password" flow — the password only exists as a hash in the Worker's
+secrets, so recovery and rotation are the same operation. Run from the site directory:
+
+```bash
+npx restaurant-kit-bootstrap --bucket <site>-menu --skip-bucket --skip-seed
+```
+
+It prompts for the new password (hidden input) and stores a fresh `ADMIN_PASSWORD_HASH`
+**and** a fresh `ADMIN_SESSION_SECRET`. No redeploy: secrets apply within seconds. Add
+`--env staging` for staging — each env has its own password.
+
+To change only the password and keep the session secret:
+
+```bash
+npx restaurant-kit-hash-password                      # prints the hash
+npx wrangler secret put ADMIN_PASSWORD_HASH --env=""  # paste it; --env staging for staging
+```
+
+Either way **every device is signed out**, because the session signing key is derived from
+the session secret *and* the password hash. To sign everyone out without changing the
+password, rotate only the session secret:
+
+```bash
+openssl rand -base64 32 | npx wrangler secret put ADMIN_SESSION_SECRET --env=""
+```
+
+Picking the password: generate it (`openssl rand -base64 18`, or 4–5 random words if the
+owner types it on a phone), at least 16 characters, unique per site, nothing derived from
+the brand, phone number or handle. Keep a copy in a password manager and hand the owner
+theirs out of band; it never belongs in the repo, `wrangler.toml` or chat logs. The login
+rate limiter (5 attempts per IP per minute) slows guessing but does not excuse a weak one.
 
 ### Migrating a site off Cloudflare Access
 
