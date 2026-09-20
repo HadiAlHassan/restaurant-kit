@@ -9,7 +9,8 @@
     "scripts"
   ],
   "bin": {
-    "restaurant-kit-hash-password": "./scripts/hash-admin-password.mjs"
+    "restaurant-kit-hash-password": "./scripts/hash-admin-password.mjs",
+    "restaurant-kit-bootstrap": "./scripts/bootstrap-site.mjs"
   },
   "main": "./dist/index.js",
   "types": "./dist/types/index.d.ts",

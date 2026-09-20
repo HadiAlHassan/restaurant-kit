@@ -234,6 +234,26 @@ otherwise). Validation failures are JSON `4xx` responses; unexpected failures ar
 
 In local dev the provider uses `createLocalMenuApiClient(seedMenu, storageKey)`, which
 persists drafts to `localStorage` and reports the `local` strategy — no worker required.
+To exercise the real Worker locally instead, set `VITE_MENU_API_BASE_URL` (and
+`VITE_MENU_API_URL`) to the `wrangler dev` origin; that overrides the localhost rule.
+`wrangler dev` reads its secrets from `.dev.vars` — generate one with
+`npx restaurant-kit-bootstrap --dev-vars`.
+
+### Environments
+
+One `wrangler.toml` per site, with production at the top level and a `[env.staging]`
+block that points at **its own bucket and secrets**. Staging never touches production data;
+seed it once from production's published menu:
+
+```bash
+npx restaurant-kit-bootstrap --bucket <site>-menu-staging --env staging --seed-from <site>-menu
+npx wrangler deploy --env staging
+```
+
+`restaurant-kit-bootstrap` creates the bucket, seeds it, prompts for the admin password and
+stores both secrets on the right env, then dry-runs the deploy and prints the DNS checklist.
+Same command without `--env` provisions a brand-new production site. Keep `preview_urls`
+off: version previews inherit production bindings, so they would edit the production draft.
 
 ### Migrating a site off Cloudflare Access
 
