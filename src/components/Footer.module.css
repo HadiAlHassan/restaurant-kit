@@ -1,0 +1,28 @@
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px max(28px, calc((100vw - 1240px) / 2));
+  border-top: 1px solid var(--restaurant-accent-wash);
+  background: var(--restaurant-surface);
+  color: var(--restaurant-text-subtle);
+  font-size: 0.86rem;
+}
+
+.legal,
+.note {
+  margin: 0;
+}
+
+.note {
+  color: var(--restaurant-text-warm);
+}
+
+@media (max-width: 980px) {
+  .footer {
+    flex-direction: column;
+    align-items: start;
+    gap: 6px;
+  }
+}

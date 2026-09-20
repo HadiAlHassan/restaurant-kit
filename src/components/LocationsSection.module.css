@@ -1,0 +1,164 @@
+.locations {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, transparent 0 58%, var(--restaurant-brand-wash-soft)),
+    var(--restaurant-surface);
+}
+
+.locations h2 {
+  max-width: 980px;
+  margin-bottom: 42px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  border: 1px solid var(--restaurant-stroke);
+  background: var(--restaurant-stroke);
+  box-shadow: 0 28px 90px var(--restaurant-shadow-soft);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-height: 260px;
+  padding: 28px;
+  background: var(--restaurant-bg);
+  color: var(--restaurant-text);
+  transition: background 180ms ease, color 180ms ease;
+}
+
+.card p {
+  margin: 0 0 16px;
+  color: var(--restaurant-text-subtle);
+  font-weight: 800;
+}
+
+.card strong {
+  margin-top: auto;
+  color: var(--restaurant-text-warm);
+  font-size: 0.88rem;
+  font-weight: 900;
+}
+
+.card span {
+  display: block;
+  margin-bottom: 50px;
+  color: var(--restaurant-text-warm);
+  font-family: "Space Grotesk", "Inter", sans-serif;
+  font-size: 2.7rem;
+  font-weight: 700;
+  line-height: 0.9;
+}
+
+.socialIcon {
+  width: 46px;
+  height: 46px;
+  margin-bottom: 50px;
+  color: var(--restaurant-text);
+  stroke-width: 1.8;
+}
+
+.card h3 {
+  margin: 0 0 18px;
+  font-family: "Space Grotesk", "Inter", sans-serif;
+  font-size: clamp(1.5rem, 2vw, 2.2rem);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.card a {
+  color: var(--restaurant-text-subtle);
+  font-weight: 800;
+}
+
+.card:is(a):focus-visible {
+  outline: 2px solid var(--restaurant-text-warm);
+  outline-offset: 4px;
+}
+
+.card:is(a):hover {
+  background: var(--restaurant-primary-deep);
+  outline: 0;
+}
+
+.card a:hover,
+.card a:focus-visible,
+.card:is(a):hover strong,
+.card:is(a):focus-visible strong {
+  color: var(--restaurant-text);
+}
+
+.card a:focus-visible {
+  outline: 2px solid var(--restaurant-text-warm);
+  outline-offset: 4px;
+}
+
+.linkStack {
+  display: grid;
+  gap: 10px;
+}
+
+.accent {
+  background: var(--restaurant-primary);
+  color: var(--restaurant-text);
+}
+
+.accent span,
+.accent strong,
+.accent a {
+  color: var(--restaurant-text);
+}
+
+@media (max-width: 980px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+
+  .card {
+    min-height: 210px;
+  }
+}
+
+@media (max-width: 560px) {
+  .locations {
+    padding-block: 54px;
+  }
+
+  .locations h2 {
+    max-width: 9ch;
+    margin-bottom: 22px;
+  }
+
+  .card {
+    min-height: 0;
+    padding: 20px 22px;
+  }
+
+  .card span {
+    margin-bottom: 28px;
+    font-size: 1.95rem;
+  }
+
+  .socialIcon {
+    width: 36px;
+    height: 36px;
+    margin-bottom: 28px;
+  }
+
+  .card h3 {
+    margin-bottom: 10px;
+    font-size: 1.45rem;
+  }
+
+  .card p {
+    margin-bottom: 10px;
+  }
+
+  .linkStack {
+    gap: 6px;
+  }
+}

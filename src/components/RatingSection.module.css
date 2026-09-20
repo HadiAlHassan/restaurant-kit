@@ -1,0 +1,116 @@
+.restaurant {
+  background:
+    linear-gradient(180deg, var(--restaurant-surface-glass-strong), var(--restaurant-surface-deep)),
+    var(--restaurant-bg);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.68fr);
+  gap: 52px;
+  align-items: center;
+}
+
+.panel {
+  display: grid;
+  min-height: 310px;
+  align-content: center;
+  gap: 24px;
+  padding: 28px;
+  border: 1px solid var(--restaurant-stroke);
+  border-radius: 28px;
+  background:
+    linear-gradient(135deg, var(--restaurant-brand-wash), transparent 46%),
+    var(--restaurant-surface-tint);
+}
+
+.score {
+  display: flex;
+  align-items: end;
+  gap: 18px;
+}
+
+.score span {
+  color: var(--restaurant-text);
+  font-family: "Space Grotesk", "Inter", sans-serif;
+  font-size: clamp(5rem, 8vw, 8.8rem);
+  font-weight: 700;
+  line-height: 0.8;
+}
+
+.stars {
+  color: var(--restaurant-accent);
+  font-size: clamp(1.3rem, 2vw, 2.1rem);
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-shadow: 0 0 22px var(--restaurant-accent-wash);
+}
+
+.copy {
+  margin: 0;
+  color: var(--restaurant-muted);
+  font-size: clamp(1.1rem, 1.7vw, 1.45rem);
+  font-weight: 700;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.meta span {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  padding: 8px 12px;
+  border: 1px solid var(--restaurant-stroke);
+  border-radius: 999px;
+  color: var(--restaurant-text-subtle);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 980px) {
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 34px;
+  }
+}
+
+@media (max-width: 560px) {
+  .score {
+    align-items: start;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .panel {
+    min-height: auto;
+    border-radius: 22px;
+  }
+
+  .score span {
+    font-size: clamp(4.2rem, 22vw, 5.8rem);
+  }
+
+  .stars {
+    font-size: 1.2rem;
+  }
+
+  .copy {
+    font-size: 1rem;
+  }
+
+  .meta {
+    gap: 8px;
+  }
+
+  .meta span {
+    min-height: 34px;
+    padding: 7px 10px;
+    font-size: 0.68rem;
+  }
+}

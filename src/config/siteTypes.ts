@@ -1,0 +1,26 @@
+export type RestaurantSiteConfig = {
+  readonly restaurantId: string;
+  readonly brandName: string;
+  readonly tagline: string;
+  readonly locationLabel: string;
+  readonly address: string;
+  readonly phoneDisplay: string;
+  readonly phoneHref: string;
+  readonly whatsappNumber: string;
+  readonly instagramHandle: string;
+  readonly instagramUrl: string;
+  readonly mapsUrl: string;
+  readonly logoSrc: string;
+  readonly rating: string;
+  readonly ratingLabel: string;
+  readonly reviewCount: string;
+  readonly cuisineSummary: string;
+  readonly localBadge: string;
+  readonly orderGreeting: string;
+  readonly highlights: readonly string[];
+  readonly heroEyebrow: string;
+  readonly heroSubline: string;
+  readonly ratingHeadline: string;
+  readonly ratingCopy: string;
+  readonly footerNote: string;
+};

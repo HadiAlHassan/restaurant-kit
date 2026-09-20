@@ -1,0 +1,27 @@
+.marquee {
+  overflow: hidden;
+  border-block: 1px solid var(--restaurant-warning-line);
+  background: var(--restaurant-primary);
+  color: var(--restaurant-text);
+}
+
+.track {
+  display: flex;
+  width: max-content;
+  gap: 42px;
+  padding: 14px 0;
+  animation: marquee 26s linear infinite;
+}
+
+.track span {
+  font-family: "Space Grotesk", "Inter", sans-serif;
+  font-size: clamp(1.2rem, 2.2vw, 2rem);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}

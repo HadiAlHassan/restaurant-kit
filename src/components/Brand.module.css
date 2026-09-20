@@ -1,0 +1,48 @@
+.brand {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 12px;
+}
+
+.logo {
+  width: 58px;
+  height: 58px;
+  flex: 0 0 58px;
+  border-radius: 50%;
+  object-fit: contain;
+  filter: drop-shadow(0 0 22px var(--restaurant-brand-wash-strong));
+}
+
+.copy {
+  display: grid;
+  gap: 2px;
+}
+
+.name {
+  color: var(--restaurant-text);
+  font-family: "Space Grotesk", "Inter", sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.line {
+  color: var(--restaurant-accent);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 560px) {
+  .logo {
+    width: 46px;
+    height: 46px;
+    flex-basis: 46px;
+  }
+
+  .line {
+    display: none;
+  }
+}
