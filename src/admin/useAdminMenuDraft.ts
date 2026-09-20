@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useRestaurantKit } from "../config/siteConfigContext";
-import { shouldUseLocalMenuApi } from "../menu/localMenuApi";
 import type { AdminSession, MenuApiClient } from "../menu/menuApi";
 import { updateMenuItem } from "../menu/menuMutations";
 import type { DynamicMenu, MenuItem } from "../menu/menuSchema";
@@ -80,6 +79,7 @@ export function useAdminMenuDraft(options: UseAdminMenuDraftOptions = {}): Admin
   const kit = useRestaurantKit();
   const { api, initialMenu = kit.seedMenu, enabled = true } = options;
   const menuApi = api ?? kit.menuApi;
+  const isLocalApi = api ? false : kit.isLocalApi;
 
   // The ref is the source of truth and is updated synchronously, so two commands issued in
   // the same tick each see the other's result; state mirrors it for rendering.
@@ -217,7 +217,7 @@ export function useAdminMenuDraft(options: UseAdminMenuDraftOptions = {}): Admin
 
     try {
       await runSave();
-      toast.success("Draft saved", { description: shouldUseLocalMenuApi() ? "The local draft menu has been updated." : "The remote draft menu has been updated." });
+      toast.success("Draft saved", { description: isLocalApi ? "The local draft menu has been updated." : "The remote draft menu has been updated." });
     } catch (error) {
       toast.error("Could not save draft", {
         description: getApiErrorMessage(error),
@@ -225,7 +225,7 @@ export function useAdminMenuDraft(options: UseAdminMenuDraftOptions = {}): Admin
     } finally {
       setIsSavingDraft(false);
     }
-  }, [runSave]);
+  }, [isLocalApi, runSave]);
 
   const publishDraft = useCallback(async () => {
     setIsPublishingDraft(true);
@@ -245,8 +245,8 @@ export function useAdminMenuDraft(options: UseAdminMenuDraftOptions = {}): Admin
 
   const resetDraft = useCallback(() => {
     commit({ type: "set", menu: initialMenu });
-    toast.success("Draft reset locally", { description: shouldUseLocalMenuApi() ? "Save draft to update this browser." : "Save draft to update the remote draft menu." });
-  }, [commit, initialMenu]);
+    toast.success("Draft reset locally", { description: isLocalApi ? "Save draft to update this browser." : "Save draft to update the remote draft menu." });
+  }, [commit, initialMenu, isLocalApi]);
 
   const applyCommand = useCallback(
     (command: AdminMenuCommand): AdminMenuCommandRejection | null => {

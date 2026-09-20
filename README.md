@@ -236,6 +236,19 @@ In local dev the provider uses `createLocalMenuApiClient(seedMenu, storageKey)`,
 persists drafts to `localStorage` and reports the `local` strategy — no worker required.
 To exercise the real Worker locally instead, set `VITE_MENU_API_BASE_URL` (and
 `VITE_MENU_API_URL`) to the `wrangler dev` origin; that overrides the localhost rule.
+
+The kit itself never reads `import.meta.env` (Vite would bake the library's empty env at
+build time). Your site forwards its env through the `api` prop:
+
+```tsx
+<RestaurantSite
+  config={config}
+  seedMenu={seedMenu}
+  api={{ baseUrl: import.meta.env.VITE_MENU_API_BASE_URL, publicMenuUrl: import.meta.env.VITE_MENU_API_URL }}
+/>
+```
+
+`api.mode` can force `"local"` or `"remote"` regardless of hostname.
 `wrangler dev` reads its secrets from `.dev.vars` — generate one with
 `npx restaurant-kit-bootstrap --dev-vars`.
 

@@ -1,7 +1,7 @@
 import type { DynamicMenu } from "./menuSchema";
 
-const defaultApiBaseUrl = (import.meta.env.VITE_MENU_API_BASE_URL as string | undefined) ?? "";
-const defaultPublicMenuUrl = (import.meta.env.VITE_MENU_API_URL as string | undefined) ?? joinUrl(defaultApiBaseUrl, "/api/menu");
+// The kit never reads import.meta.env: Vite would bake the library's own (empty) env at build
+// time. Consumers pass their VITE_* values through RestaurantKitProvider's `api` prop instead.
 
 type Fetcher = typeof fetch;
 
@@ -67,8 +67,8 @@ export class MenuApiError extends Error {
 
 export function createMenuApiClient(options: MenuApiClientOptions = {}): MenuApiClient {
   const fetcher = options.fetcher ?? fetch;
-  const apiBaseUrl = options.apiBaseUrl ?? defaultApiBaseUrl;
-  const publicMenuUrl = options.publicMenuUrl ?? defaultPublicMenuUrl;
+  const apiBaseUrl = options.apiBaseUrl ?? "";
+  const publicMenuUrl = options.publicMenuUrl ?? joinUrl(apiBaseUrl, "/api/menu");
 
   return {
     getPublishedMenu: () => requestJson<DynamicMenu>(fetcher, publicMenuUrl),

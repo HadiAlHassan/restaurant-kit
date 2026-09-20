@@ -1,10 +1,7 @@
 import { createContext, createElement, type ReactNode, useContext, useEffect, useState } from "react";
 import { useRestaurantKit } from "../config/siteConfigContext";
-import { shouldUseLocalMenuApi } from "./localMenuApi";
 import { readMenuDraft } from "./menuDraftStorage";
 import type { DynamicMenu } from "./menuSchema";
-
-const menuApiUrl = (import.meta.env.VITE_MENU_API_URL as string | undefined) ?? "/api/menu";
 
 export type MenuDataStatus = "local" | "loading" | "remote" | "fallback" | "draft";
 
@@ -20,14 +17,14 @@ export function MenuDataProvider({ children, value }: { readonly children: React
 }
 
 function useRemoteMenuData(enabled: boolean) {
-  const { seedMenu, draftStorageKey } = useRestaurantKit();
+  const { seedMenu, draftStorageKey, isLocalApi, publicMenuUrl: menuApiUrl } = useRestaurantKit();
   const [menu, setMenu] = useState<DynamicMenu>(seedMenu);
   const [status, setStatus] = useState<MenuDataStatus>("local");
 
   useEffect(() => {
     if (!enabled) return;
 
-    if (shouldUseLocalMenuApi()) {
+    if (isLocalApi) {
       const localDraft = readMenuDraft(draftStorageKey);
       if (localDraft) {
         setMenu(localDraft);
@@ -60,7 +57,7 @@ function useRemoteMenuData(enabled: boolean) {
     return () => {
       isMounted = false;
     };
-  }, [draftStorageKey, enabled, seedMenu]);
+  }, [draftStorageKey, enabled, isLocalApi, menuApiUrl, seedMenu]);
 
   return { menu, status };
 }

@@ -42,14 +42,12 @@ export function createLocalMenuApiClient(initialMenu: DynamicMenu, storageKey: s
   };
 }
 
-const configuredApiBaseUrl = ((import.meta.env.VITE_MENU_API_BASE_URL as string | undefined) ?? "").trim();
-
 /**
- * localhost / 127.0.0.1 → browser-local adapter (no Worker needed), unless VITE_MENU_API_BASE_URL
- * is set, which opts the dev server into a real Worker (e.g. `wrangler dev` on :8787).
+ * localhost / 127.0.0.1 → browser-local adapter (no Worker needed), unless an API base URL is
+ * configured, which opts the dev server into a real Worker (e.g. `wrangler dev` on :8787).
  */
-export function shouldUseLocalMenuApi() {
+export function shouldUseLocalMenuApi(apiBaseUrl = "") {
   if (typeof window === "undefined") return false;
-  if (configuredApiBaseUrl) return false;
+  if (apiBaseUrl.trim()) return false;
   return window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
 }

@@ -3,7 +3,7 @@ import "./styles/global.css";
 export { RestaurantSite } from "./RestaurantSiteRoutes";
 
 export { RestaurantKitProvider } from "./config/RestaurantKitProvider";
-export { useMenuApi, useRestaurantKit, useSeedMenu, useSiteConfig, type RestaurantKitValue } from "./config/siteConfigContext";
+export { useMenuApi, useRestaurantKit, useSeedMenu, useSiteConfig, type RestaurantKitApiOptions, type RestaurantKitValue } from "./config/siteConfigContext";
 export type { RestaurantSiteConfig } from "./config/siteTypes";
 
 export { MenuSite } from "./pages/MenuSite";

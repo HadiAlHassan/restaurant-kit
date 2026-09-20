@@ -7,23 +7,20 @@ import { KitTestWrapper } from "../testing/KitTestWrapper";
 import { MenuDataProvider, useMenuData, type MenuDataValue } from "./useMenuData";
 
 const readMenuDraft = vi.fn();
-const shouldUseLocalMenuApi = vi.fn();
 
 vi.mock("./menuDraftStorage", () => ({ readMenuDraft: () => readMenuDraft(), menuDraftStorageKey: (id: string) => `${id}:menu-draft:v1` }));
-vi.mock("./localMenuApi", () => ({ shouldUseLocalMenuApi: () => shouldUseLocalMenuApi(), createLocalMenuApiClient: () => ({}) }));
 
 const localDraft = { ...demoSeedMenu, updatedAt: "2026-09-20T00:00:00Z" };
 const providedValue: MenuDataValue = { menu: { ...demoSeedMenu, updatedAt: "2026-01-01T00:00:00Z" }, status: "remote" };
 
 beforeEach(() => {
   readMenuDraft.mockReset().mockReturnValue(localDraft);
-  shouldUseLocalMenuApi.mockReset().mockReturnValue(true);
 });
 
 afterEach(cleanup);
 
 describe("useMenuData", () => {
-  it("reads the local draft when nothing provides menu data", () => {
+  it("reads the local draft when nothing provides menu data (local mode)", () => {
     const { result } = renderHook(() => useMenuData(), { wrapper: KitTestWrapper });
 
     expect(readMenuDraft).toHaveBeenCalledTimes(1);
@@ -41,5 +38,18 @@ describe("useMenuData", () => {
 
     expect(readMenuDraft).not.toHaveBeenCalled();
     expect(result.current).toBe(providedValue);
+  });
+
+  it("fetches the configured public menu URL when an API base is set", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(localDraft), { headers: { "content-type": "application/json" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    const wrapper = ({ children }: { children: ReactNode }) => <KitTestWrapper api={{ baseUrl: "http://localhost:8787" }}>{children}</KitTestWrapper>;
+
+    const { result } = renderHook(() => useMenuData(), { wrapper });
+    await vi.waitFor(() => expect(result.current.status).toBe("remote"));
+
+    expect(readMenuDraft).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledWith("http://localhost:8787/api/menu", { cache: "no-store" });
+    vi.unstubAllGlobals();
   });
 });

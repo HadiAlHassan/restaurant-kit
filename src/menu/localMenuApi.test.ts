@@ -1,28 +1,15 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from "vitest";
-
-async function loadShouldUseLocal() {
-  vi.resetModules();
-  return (await import("./localMenuApi")).shouldUseLocalMenuApi;
-}
-
-afterEach(() => {
-  vi.unstubAllEnvs();
-});
+import { describe, expect, it } from "vitest";
+import { shouldUseLocalMenuApi } from "./localMenuApi";
 
 describe("shouldUseLocalMenuApi", () => {
-  it("is true on localhost with no API base configured", async () => {
-    vi.stubEnv("VITE_MENU_API_BASE_URL", "");
-    const shouldUseLocalMenuApi = await loadShouldUseLocal();
-
+  it("is true on localhost with no API base configured", () => {
     expect(window.location.hostname).toBe("localhost");
     expect(shouldUseLocalMenuApi()).toBe(true);
+    expect(shouldUseLocalMenuApi("  ")).toBe(true);
   });
 
-  it("is false on localhost once VITE_MENU_API_BASE_URL points at a Worker", async () => {
-    vi.stubEnv("VITE_MENU_API_BASE_URL", "http://localhost:8787");
-    const shouldUseLocalMenuApi = await loadShouldUseLocal();
-
-    expect(shouldUseLocalMenuApi()).toBe(false);
+  it("is false on localhost once an API base URL points at a Worker", () => {
+    expect(shouldUseLocalMenuApi("http://localhost:8787")).toBe(false);
   });
 });
