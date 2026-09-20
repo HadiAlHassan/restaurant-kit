@@ -1256,6 +1256,25 @@
   transition: background-color 140ms ease;
 }
 
+.sheetOrderLink {
+  justify-content: center;
+  border-color: var(--restaurant-order-bg);
+  background: var(--restaurant-order-bg);
+  color: var(--restaurant-order-text);
+}
+
+.sheetAdd.sheetOrderLink:hover {
+  background: var(--restaurant-order-bg);
+  filter: brightness(1.08);
+}
+
+.sheetOrderIcon {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  object-fit: contain;
+}
+
 .sheetAdd:hover {
   background: var(--restaurant-primary-hover);
 }

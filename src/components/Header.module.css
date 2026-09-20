@@ -59,10 +59,17 @@
   color: var(--restaurant-whatsapp-text);
 }
 
+.externalPill {
+  border-color: var(--restaurant-order-bg);
+  background: var(--restaurant-order-bg);
+  color: var(--restaurant-order-text);
+}
+
 .pillIcon {
   width: 19px;
   height: 19px;
   flex: 0 0 19px;
+  object-fit: contain;
 }
 
 .menuHidden {

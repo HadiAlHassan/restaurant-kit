@@ -71,7 +71,7 @@ Individual sections (`Header`, `Hero`, `Marquee`, `MenuBrowser`, `RatingSection`
 
 ## Configuration
 
-`RestaurantSiteConfig` — every field is required:
+`RestaurantSiteConfig` — every field is required except `ordering`:
 
 | Field | Purpose |
 | --- | --- |
@@ -79,7 +79,7 @@ Individual sections (`Header`, `Hero`, `Marquee`, `MenuBrowser`, `RatingSection`
 | `brandName`, `tagline`, `cuisineSummary`, `localBadge` | Branding copy |
 | `locationLabel`, `address`, `mapsUrl` | Locations section |
 | `phoneDisplay`, `phoneHref` | Call button |
-| `whatsappNumber`, `orderGreeting` | WhatsApp order link (number in international form, no `+`) |
+| `whatsappNumber`, `orderGreeting` | WhatsApp order link (number in international form, no `+`). Set `whatsappNumber: ""` to hide every WhatsApp link |
 | `instagramHandle`, `instagramUrl` | Social links |
 | `logoSrc` | Header/footer logo URL |
 | `rating`, `ratingLabel`, `reviewCount` | Rating badge |
@@ -87,6 +87,44 @@ Individual sections (`Header`, `Hero`, `Marquee`, `MenuBrowser`, `RatingSection`
 | `heroEyebrow`, `heroSubline` | Hero copy |
 | `ratingHeadline`, `ratingCopy` | Rating section copy |
 | `footerNote` | Footer line under the address |
+| `ordering` | Optional. How customers order — see [Ordering modes](#ordering-modes) |
+
+### Ordering modes
+
+Not every restaurant takes orders over WhatsApp. `ordering` switches the whole cart feature:
+
+```ts
+// Default (omit the field): cart + "Add to cart" everywhere, order sent as a WhatsApp message.
+ordering: { mode: "whatsapp" }
+
+// Cart off. Browse-only menu; every order button opens the delivery app / site instead.
+ordering: { mode: "external", url: "https://link.totersapp.com/…", label: "Order on Toters", shortLabel: "Order", iconSrc: "/assets/brand/toters-mark.svg" }
+```
+
+| | `whatsapp` | `external` |
+| --- | --- | --- |
+| Header pill, hero button | `wa.me/<whatsappNumber>` | `url`, labelled `shortLabel` / `label` |
+| Menu cards and rows | "Add to cart" + quantity stepper | no cart controls; tap opens a detail sheet |
+| Item sheet | sizes, remove ingredients, note, add to cart | photo, description, sizes and prices, one `label` button to `url` |
+| Cart drawer + floating cart button | mounted | not rendered |
+
+The external buttons take the app's brand from two tokens (default: your primary color) and show
+`iconSrc` inside the button, or an arrow when it is omitted:
+
+```css
+:root {
+  --restaurant-order-bg: #00b393;   /* Toters green */
+  --restaurant-order-text: #ffffff;
+}
+```
+
+In `external` mode `orderGreeting` is unused, and removable ingredients stay in the menu data
+(and the admin editor) but are not shown to customers. The contact card keeps its
+"Message on WhatsApp" link while `whatsappNumber` is set — a restaurant can order through an
+app and still chat on WhatsApp; set it to `""` to drop WhatsApp entirely.
+
+`useOrdering()` returns the resolved `{ cartEnabled, isWhatsApp, href, label, shortLabel }` for
+custom layouts. When composing your own page, skip `<MenuCartDrawer />` when `cartEnabled` is false.
 
 ### Admin draft across routes
 
@@ -106,11 +144,15 @@ nearest provider and throw outside one.
 
 All colors are CSS custom properties on `:root`, prefixed `--restaurant-`. Override any
 of them after importing `restaurant-kit/styles.css`. The hero background image has no
-default — set it or the hero renders on the flat background color:
+default — set it or the hero renders on the flat background color. The kit blurs and dims it
+as a backdrop; for a real photo worth showing, relax `--restaurant-hero-filter` (and the
+`--restaurant-hero-overlay-*` gradients), and aim it with `--restaurant-hero-position`:
 
 ```css
 :root {
   --restaurant-hero-image: url("/hero.jpg");
+  --restaurant-hero-filter: blur(1px) brightness(0.9); /* default: blur(7px) saturate(0.88) brightness(0.78) */
+  --restaurant-hero-position: center 60%;               /* default: center */
   --restaurant-primary: #4c602b;
   --restaurant-accent: #08743a;
 }
@@ -118,7 +160,8 @@ default — set it or the hero renders on the flat background color:
 
 Notable groups: surfaces (`--restaurant-bg`, `--restaurant-surface*`), text
 (`--restaurant-text*`, `--restaurant-muted`), brand (`--restaurant-primary*`,
-`--restaurant-accent*`), hero overlays (`--restaurant-hero-overlay-*`), state
+`--restaurant-accent*`, `--restaurant-on-primary` for text on a primary fill — override it when
+the primary is a light color), hero overlays (`--restaurant-hero-overlay-*`), state
 (`--restaurant-danger*`, `--restaurant-warning-*`), and WhatsApp
 (`--restaurant-whatsapp*`).
 

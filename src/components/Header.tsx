@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { Brand } from "./Brand";
-import { WhatsAppIcon } from "./WhatsAppIcon";
+import { OrderIcon } from "./OrderIcon";
 import styles from "./Header.module.css";
 import { useSiteConfig } from "../config/siteConfigContext";
+import { useOrdering } from "../config/useOrdering";
 
 export function Header() {
   const siteConfig = useSiteConfig();
+  const ordering = useOrdering();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuHidden, setIsMenuHidden] = useState(false);
 
@@ -40,10 +42,12 @@ export function Header() {
           Instagram
         </a>
       </nav>
-      <a className={styles.pill} href={`https://wa.me/${siteConfig.whatsappNumber}`} target="_blank" rel="noreferrer">
-        Order
-        <WhatsAppIcon className={styles.pillIcon} />
-      </a>
+      {ordering.href ? (
+        <a className={`${styles.pill} ${ordering.isWhatsApp ? "" : styles.externalPill}`} href={ordering.href} target="_blank" rel="noreferrer">
+          {ordering.shortLabel}
+          <OrderIcon className={styles.pillIcon} />
+        </a>
+      ) : null}
     </header>
   );
 }

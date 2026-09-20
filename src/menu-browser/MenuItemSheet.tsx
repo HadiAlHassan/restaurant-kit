@@ -2,6 +2,8 @@ import { Expand, Minus, Plus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { CartItem } from "../cart/cartTypes";
 import { useCart } from "../cart/useCart";
+import { OrderIcon } from "../components/OrderIcon";
+import { useOrdering } from "../config/useOrdering";
 import { formatPriceTotal } from "../menu/priceFormat";
 import type { MenuItem } from "../menu/menuSchema";
 import { cx } from "../utils";
@@ -30,6 +32,8 @@ export function MenuItemSheet({ item, editLine, onClose }: MenuItemSheetProps) {
   const price = selectedSize?.price ?? item.price;
   const hasMultiplePrices = sizes.length > 1;
   const { addItem, replaceItem, items, openCart } = useCart();
+  const ordering = useOrdering();
+  const { cartEnabled } = ordering;
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const total = formatPriceTotal(price, quantity);
   const inCartQuantity = items.filter((line) => line.itemId === item.id).reduce((count, line) => count + line.quantity, 0);
@@ -99,7 +103,7 @@ export function MenuItemSheet({ item, editLine, onClose }: MenuItemSheetProps) {
               {!hasMultiplePrices ? <span className={styles.price}>{formatPrice(price) || "M.P."}</span> : null}
             </header>
             {item.description ? <p className={styles.sheetDesc}>{item.description}</p> : null}
-            {inCartQuantity && !editLine ? (
+            {cartEnabled && inCartQuantity && !editLine ? (
               <p className={styles.sheetInCart}>
                 In your cart: {inCartQuantity} — this adds another.{" "}
                 <button
@@ -133,7 +137,7 @@ export function MenuItemSheet({ item, editLine, onClose }: MenuItemSheetProps) {
                 })}
               </div>
             ) : null}
-            {removableIngredients.length ? (
+            {cartEnabled && removableIngredients.length ? (
               <fieldset className={styles.sheetRemovables}>
                 <legend className={styles.sheetNoteLabel}>Remove ingredients</legend>
                 {removableIngredients.map((ingredient) => (
@@ -144,33 +148,47 @@ export function MenuItemSheet({ item, editLine, onClose }: MenuItemSheetProps) {
                 ))}
               </fieldset>
             ) : null}
-            <label className={styles.sheetNoteLabel} htmlFor={`sheet-note-${item.id}`}>
-              Special instructions
-            </label>
-            <textarea
-              className={styles.sheetNote}
-              id={`sheet-note-${item.id}`}
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-              placeholder="e.g. no pickles, sauce on the side…"
-            />
+            {cartEnabled ? (
+              <>
+                <label className={styles.sheetNoteLabel} htmlFor={`sheet-note-${item.id}`}>
+                  Special instructions
+                </label>
+                <textarea
+                  className={styles.sheetNote}
+                  id={`sheet-note-${item.id}`}
+                  value={note}
+                  onChange={(event) => setNote(event.target.value)}
+                  placeholder="e.g. no pickles, sauce on the side…"
+                />
+              </>
+            ) : null}
           </div>
         </div>
-        <footer className={styles.sheetFooter}>
-          <div className={styles.sheetStepper} aria-label={`${item.title} quantity`}>
-            <button type="button" onClick={() => setQuantity((current) => Math.max(1, current - 1))} aria-label="Decrease quantity">
-              <Minus aria-hidden="true" />
+        {cartEnabled ? (
+          <footer className={styles.sheetFooter}>
+            <div className={styles.sheetStepper} aria-label={`${item.title} quantity`}>
+              <button type="button" onClick={() => setQuantity((current) => Math.max(1, current - 1))} aria-label="Decrease quantity">
+                <Minus aria-hidden="true" />
+              </button>
+              <span>{quantity}</span>
+              <button type="button" onClick={() => setQuantity((current) => current + 1)} aria-label="Increase quantity">
+                <Plus aria-hidden="true" />
+              </button>
+            </div>
+            <button className={styles.sheetAdd} type="button" onClick={handleAdd}>
+              <span>{editLine ? "Update cart" : "Add to cart"}</span>
+              {total ? <span className={styles.sheetTotal}>{total}</span> : null}
             </button>
-            <span>{quantity}</span>
-            <button type="button" onClick={() => setQuantity((current) => current + 1)} aria-label="Increase quantity">
-              <Plus aria-hidden="true" />
-            </button>
-          </div>
-          <button className={styles.sheetAdd} type="button" onClick={handleAdd}>
-            <span>{editLine ? "Update cart" : "Add to cart"}</span>
-            {total ? <span className={styles.sheetTotal}>{total}</span> : null}
-          </button>
-        </footer>
+          </footer>
+        ) : ordering.href ? (
+          // Browse-only menu: the sheet is a detail view and hands off to the ordering app.
+          <footer className={styles.sheetFooter}>
+            <a className={cx(styles.sheetAdd, styles.sheetOrderLink)} href={ordering.href} target="_blank" rel="noreferrer">
+              <span>{ordering.label}</span>
+              <OrderIcon className={styles.sheetOrderIcon} />
+            </a>
+          </footer>
+        ) : null}
       </div>
       {isLightboxOpen ? <MenuLightbox alt={item.title} imageSrc={imageSrc(item.image)} onClose={() => setLightboxOpen(false)} /> : null}
     </div>

@@ -11,24 +11,21 @@ export function LocationsSection() {
         <p className="micro-label">Location</p>
         <h2 id="locations-title">Come Find Us!</h2>
         <div className={styles.row}>
-          <a
-            className={styles.card}
-            href={siteConfig.mapsUrl}
-            target="_blank"
-            rel="noreferrer"
-          >
+          <a className={styles.card} href={siteConfig.mapsUrl} target="_blank" rel="noreferrer">
             <h3>{siteConfig.locationLabel}</h3>
             <p>{siteConfig.address}</p>
             <strong>Open Maps</strong>
           </a>
           <article className={styles.card}>
             <span>TEL</span>
-            <h3>Call or WhatsApp</h3>
+            <h3>{siteConfig.whatsappNumber ? "Call or WhatsApp" : "Call us"}</h3>
             <div className={styles.linkStack}>
               <a href={siteConfig.phoneHref}>{siteConfig.phoneDisplay}</a>
-              <a href={`https://wa.me/${siteConfig.whatsappNumber}`} target="_blank" rel="noreferrer">
-                Message on WhatsApp
-              </a>
+              {siteConfig.whatsappNumber ? (
+                <a href={`https://wa.me/${siteConfig.whatsappNumber}`} target="_blank" rel="noreferrer">
+                  Message on WhatsApp
+                </a>
+              ) : null}
             </div>
           </article>
           <article className={`${styles.card} ${styles.accent}`}>

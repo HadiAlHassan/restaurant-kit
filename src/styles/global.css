@@ -15,6 +15,11 @@
   --restaurant-text: #f9f6ec;
   --restaurant-text-warm: #eee2c8;
   --restaurant-accent-soft: #d6a15b;
+  /* Text on a --restaurant-primary fill. Override when the primary is a light color. */
+  --restaurant-on-primary: var(--restaurant-text);
+  /* External order button (`ordering.mode: "external"`): set to the ordering app's brand color. */
+  --restaurant-order-bg: var(--restaurant-primary);
+  --restaurant-order-text: var(--restaurant-on-primary);
 
   /* Semantic UI tokens. Shared components should reference these. */
   --restaurant-muted: rgba(249, 246, 236, 0.72);
@@ -157,7 +162,12 @@ h2 {
 
 .button-fill {
   background: var(--restaurant-primary);
-  color: var(--restaurant-text);
+  color: var(--restaurant-on-primary);
+}
+
+.button-order {
+  background: var(--restaurant-order-bg);
+  color: var(--restaurant-order-text);
 }
 
 .button-ghost {

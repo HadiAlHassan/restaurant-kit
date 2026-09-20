@@ -8,6 +8,7 @@ import { Marquee } from "../components/Marquee";
 import { RatingSection } from "../components/RatingSection";
 import { MenuCartDrawer } from "../menu-browser/MenuCartDrawer";
 import { MenuSection } from "../menu-browser/MenuSection";
+import { useOrdering } from "../config/useOrdering";
 import { MenuDataProvider, useMenuData, type MenuDataValue } from "../menu/useMenuData";
 
 type MenuSiteProps = {
@@ -22,6 +23,7 @@ function FetchedMenuDataProvider({ children }: { readonly children: ReactNode })
 }
 
 export function MenuSite({ menuData }: MenuSiteProps) {
+  const { cartEnabled } = useOrdering();
   const site = (
     <CartProvider>
       <Header />
@@ -32,7 +34,7 @@ export function MenuSite({ menuData }: MenuSiteProps) {
         <RatingSection />
         <LocationsSection />
       </main>
-      <MenuCartDrawer />
+      {cartEnabled ? <MenuCartDrawer /> : null}
       <Footer />
     </CartProvider>
   );

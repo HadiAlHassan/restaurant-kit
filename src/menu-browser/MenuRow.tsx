@@ -1,5 +1,6 @@
 import { Plus } from "lucide-react";
 import { useCart } from "../cart/useCart";
+import { useOrdering } from "../config/useOrdering";
 import type { MenuItem } from "../menu/menuSchema";
 import { cx } from "../utils";
 import styles from "./MenuBrowser.module.css";
@@ -16,6 +17,7 @@ export function MenuRow({ item, onOpen }: MenuRowProps) {
   const defaultSize = sizes[0];
   const price = defaultSize?.price ?? item.price;
   const { addItem, items } = useCart();
+  const { cartEnabled } = useOrdering();
   const quantity = items.filter((line) => line.itemId === item.id).reduce((count, line) => count + line.quantity, 0);
 
   return (
@@ -30,22 +32,26 @@ export function MenuRow({ item, onOpen }: MenuRowProps) {
           </span>
         </span>
       </button>
-      <div className={styles.rowMediaCell}>
-        {hasImage ? (
-          <button className={styles.rowThumb} type="button" onClick={onOpen} tabIndex={-1} aria-label={`View ${item.title}`}>
-            <img src={imageSrc(item.image)} alt="" loading="lazy" />
-          </button>
-        ) : null}
-        <button
-          className={cx(styles.rowAdd, !hasImage && styles.rowAddInline)}
-          type="button"
-          onClick={() => addItem({ itemId: item.id, itemName: item.title, variationId: defaultSize?.id, variationName: defaultSize?.label })}
-          aria-label={`Add ${item.title} to cart`}
-        >
-          <Plus aria-hidden="true" />
-          {quantity ? <span className={styles.rowQty}>{quantity}</span> : null}
-        </button>
-      </div>
+      {hasImage || cartEnabled ? (
+        <div className={styles.rowMediaCell}>
+          {hasImage ? (
+            <button className={styles.rowThumb} type="button" onClick={onOpen} tabIndex={-1} aria-label={`View ${item.title}`}>
+              <img src={imageSrc(item.image)} alt="" loading="lazy" />
+            </button>
+          ) : null}
+          {cartEnabled ? (
+            <button
+              className={cx(styles.rowAdd, !hasImage && styles.rowAddInline)}
+              type="button"
+              onClick={() => addItem({ itemId: item.id, itemName: item.title, variationId: defaultSize?.id, variationName: defaultSize?.label })}
+              aria-label={`Add ${item.title} to cart`}
+            >
+              <Plus aria-hidden="true" />
+              {quantity ? <span className={styles.rowQty}>{quantity}</span> : null}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </article>
   );
 }

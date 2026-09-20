@@ -1,9 +1,11 @@
-import { WhatsAppIcon } from "./WhatsAppIcon";
+import { OrderIcon } from "./OrderIcon";
 import styles from "./Hero.module.css";
 import { useSiteConfig } from "../config/siteConfigContext";
+import { useOrdering } from "../config/useOrdering";
 
 export function Hero() {
   const siteConfig = useSiteConfig();
+  const ordering = useOrdering();
 
   return (
     <section className={styles.hero} aria-labelledby="hero-title">
@@ -15,10 +17,16 @@ export function Hero() {
         </h1>
         <p className={styles.subline}>{siteConfig.heroSubline}</p>
         <div className={styles.actions}>
-          <a className="button button-whatsapp" href={`https://wa.me/${siteConfig.whatsappNumber}`} target="_blank" rel="noreferrer">
-            Order on WhatsApp
-            <WhatsAppIcon className="button-icon" />
-          </a>
+          {ordering.href ? (
+            <a className={`button ${ordering.isWhatsApp ? "button-whatsapp" : "button-order"}`} href={ordering.href} target="_blank" rel="noreferrer">
+              {ordering.label}
+              <OrderIcon className="button-icon" />
+            </a>
+          ) : (
+            <a className="button button-fill" href="#menu">
+              View menu
+            </a>
+          )}
         </div>
       </div>
     </section>
