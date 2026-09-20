@@ -13,9 +13,9 @@
   position: absolute;
   z-index: -3;
   inset: -18px;
-  background: var(--restaurant-hero-image, none) center / cover no-repeat;
+  background: var(--restaurant-hero-image, none) var(--restaurant-hero-position, center) / cover no-repeat;
   content: "";
-  filter: blur(7px) saturate(0.88) brightness(0.78);
+  filter: var(--restaurant-hero-filter, blur(7px) saturate(0.88) brightness(0.78));
   transform: scale(1.04);
 }
 
