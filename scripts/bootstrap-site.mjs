@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // One-shot provisioning for a restaurant-kit site (or one of its wrangler envs).
 //
-//   npx restaurant-kit-bootstrap --bucket soubras-lb-menu-staging --env staging --seed-from soubras-lb-menu
-//   npx restaurant-kit-bootstrap --bucket sweetmeat-menu --restaurant sweetmeat
+//   npx restaurant-kit-bootstrap --bucket demo-menu-staging --env staging --seed-from demo-menu
+//   npx restaurant-kit-bootstrap --bucket demo-menu --restaurant demo
 //   npx restaurant-kit-bootstrap --dev-vars            # writes .dev.vars for `wrangler dev`
 //
 // Steps (each skippable with --skip-<step>): bucket, seed, secrets, dry-run. Run from the site

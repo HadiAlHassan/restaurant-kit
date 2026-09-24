@@ -19,6 +19,7 @@ export { LocationsSection } from "./components/LocationsSection";
 export { Marquee } from "./components/Marquee";
 export { RatingSection } from "./components/RatingSection";
 export { TestimonialsSection } from "./components/TestimonialsSection";
+export { InstagramIcon } from "./components/InstagramIcon";
 export { WhatsAppIcon } from "./components/WhatsAppIcon";
 
 export { MenuBrowser } from "./menu-browser/MenuBrowser";
@@ -47,7 +48,8 @@ export { createLocalMenuApiClient, shouldUseLocalMenuApi } from "./menu/localMen
 export { clearMenuDraft, menuDraftStorageKey, readMenuDraft, writeMenuDraft } from "./menu/menuDraftStorage";
 export { menuIcons, menuIconOptions } from "./menu/menuIcons";
 export { formatPrice, formatPriceTotal, priceFromInput, priceInputValue, type PriceCurrency } from "./menu/priceFormat";
-export type { DynamicMenu, MenuCategory, MenuGroup, MenuIcon, MenuItem, MenuSize, Testimonial } from "./menu/menuSchema";
+export { menuIconIds, type DynamicMenu, type MenuCategory, type MenuGroup, type MenuIcon, type MenuItem, type MenuSize, type Testimonial } from "./menu/menuSchema";
+export { assertValidMenu, validateMenu, type MenuValidationIssue } from "./menu/validateMenu";
 
 export { useAdminMenuDraft, type AdminMenuDraft, type UseAdminMenuDraftOptions } from "./admin/useAdminMenuDraft";
 export { AdminDraftProvider } from "./admin/AdminDraftProvider";

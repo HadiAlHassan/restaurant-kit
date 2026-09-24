@@ -1,4 +1,4 @@
-import { Instagram } from "lucide-react";
+import { InstagramIcon } from "./InstagramIcon";
 import styles from "./LocationsSection.module.css";
 import { useSiteConfig } from "../config/siteConfigContext";
 
@@ -29,7 +29,7 @@ export function LocationsSection() {
             </div>
           </article>
           <article className={`${styles.card} ${styles.accent}`}>
-            <Instagram className={styles.socialIcon} aria-hidden="true" />
+            <InstagramIcon className={styles.socialIcon} />
             <h3>{siteConfig.instagramHandle}</h3>
             <a href={siteConfig.instagramUrl} target="_blank" rel="noreferrer">
               Open Instagram

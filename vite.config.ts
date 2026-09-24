@@ -18,6 +18,11 @@ export default defineConfig({
     rollupOptions: {
       external: (id) => !id.startsWith(".") && !id.startsWith("/") && !bundledDependencies.has(id),
       output: {
+        // One file per source module, so a site's bundler can tree-shake the barrel and split
+        // the lazily loaded admin into its own chunk.
+        preserveModules: true,
+        preserveModulesRoot: "src",
+        entryFileNames: "[name].js",
         assetFileNames: "restaurant-kit[extname]",
       },
     },

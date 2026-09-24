@@ -1,57 +1,129 @@
 # restaurant-kit
 
-Shared restaurant site kit extracted from the Soubras / SweetMeat / Munchease builds:
-public menu browser, WhatsApp cart, admin menu CMS, and the Cloudflare Worker API.
+[![npm](https://img.shields.io/npm/v/restaurant-kit)](https://www.npmjs.com/package/restaurant-kit)
+[![CI](https://github.com/HadiAlHassan/restaurant-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/HadiAlHassan/restaurant-kit/actions/workflows/ci.yml)
+[![license](https://img.shields.io/npm/l/restaurant-kit)](./LICENSE)
 
-Soubras was the canonical base (its refactor history is a superset of SweetMeat's).
-SweetMeat's parameterized draft-storage key and generic worker origin detection were
-ported on top; its permissive `ADMIN_EMAILS` fallback was **not** — the kit denies by
-default when no auth strategy is configured.
+A complete website for a small restaurant, as one React package and one Cloudflare Worker:
 
-Admin auth no longer depends on Cloudflare Access: the Worker ships a password + signed
-session cookie strategy (see [Admin auth strategies](#admin-auth-strategies)).
+- **Public site**: hero, browsable menu with groups, sections, sizes, and photos, ratings and
+  customer reviews, locations, and contact links.
+- **Ordering**: a cart that sends the order as a WhatsApp message, or, with no cart, buttons
+  that link to a delivery app (Toters, Talabat, the restaurant's own).
+- **Owner admin at `/admin`**: edit the menu, drag to reorder, upload and crop photos, preview,
+  publish, and roll back. Protected by a password; no third-party auth service.
+- **Worker API**: stores the draft, the published menu, backups, and images in R2. It fits the
+  Workers Free plan.
+
+Built for and running on real restaurant sites. The owner can edit prices without calling a
+developer, and hosting costs nothing.
+
+```
+ browser ──► Cloudflare Worker ──┬── static assets (your Vite build)
+                                 └── /api/* ──► R2: restaurants/<id>/
+                                                    ├─ draft/menu.json
+                                                    ├─ published/menu.json
+                                                    ├─ backups/published-<time>.json
+                                                    └─ images/menu/*
+```
 
 ## Install
 
 ```bash
-npm install restaurant-kit
+npm install restaurant-kit react react-dom react-router-dom
 ```
 
-Peer dependencies: `react@^19.1`, `react-dom@^19.1`, `react-router-dom@^7.18`.
-
-> If npm errors with `Cannot read properties of null (reading 'edgesOut')`, rerun with
-> `--legacy-peer-deps`. It is an arborist peer-set bug, not a kit dependency conflict.
-
-When consuming via `file:` / `npm link`, add a dedupe so the linked package does not
-pull a second copy of React:
-
-```ts
-// vite.config.ts
-export default defineConfig({
-  plugins: [react()],
-  resolve: { dedupe: ["react", "react-dom", "react-router-dom"] },
-});
-```
+Peer dependencies: `react@^19.1`, `react-dom@^19.1`, `react-router-dom@^7.18`. Node 20+.
 
 ## Quick start
 
 ```tsx
+// src/main.tsx
+import { createRoot } from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
 import { RestaurantSite, type DynamicMenu, type RestaurantSiteConfig } from "restaurant-kit";
 import "restaurant-kit/styles.css";
 
-const config: RestaurantSiteConfig = { /* see below */ };
-const seedMenu: DynamicMenu = { schemaVersion: 1, groups: [], categories: [], items: [] };
+const config: RestaurantSiteConfig = {
+  restaurantId: "demo", // must match the Worker's RESTAURANT_ID
+  brandName: "Demo Grill",
+  tagline: "Savor The Flavor",
+  locationLabel: "Demo City",
+  address: "1 Demo Street",
+  mapsUrl: "https://maps.google.com/?q=Demo+Grill",
+  phoneDisplay: "+1 555 000 0000",
+  phoneHref: "tel:+15550000000",
+  whatsappNumber: "15550000000",
+  orderGreeting: "Hi Demo Grill, I'd like to order:",
+  instagramHandle: "@demogrill",
+  instagramUrl: "https://www.instagram.com/demogrill/",
+  logoSrc: "/logo.jpg",
+  rating: "4.7",
+  ratingLabel: "4.7 out of 5 stars",
+  reviewCount: "320 reviews",
+  cuisineSummary: "Burgers & wraps",
+  localBadge: "Local favorite",
+  highlights: ["Burgers", "Wraps", "Sides"],
+  heroEyebrow: "Demo City / 1 Demo Street",
+  heroSubline: "Delicious taste with every bite.",
+  ratingHeadline: "Trusted for flavor.",
+  ratingCopy: "Average rating from customers across Google reviews.",
+  footerNote: "Demo City · 1 Demo Street",
+};
+
+// Shown until the owner publishes from /admin, and used as the local-dev menu.
+const seedMenu: DynamicMenu = {
+  schemaVersion: 1,
+  updatedAt: "2026-01-01T00:00:00.000Z",
+  restaurant: { id: "demo", name: "Demo Grill", tagline: "Savor The Flavor", phone: "+1 555 000 0000", whatsapp: "15550000000", address: "1 Demo Street" },
+  groups: [{ id: "mains", label: "Mains", icon: "burger", order: 0, isVisible: true }],
+  categories: [{ id: "burgers", groupId: "mains", title: "Burgers", order: 0, isVisible: true }],
+  items: [
+    {
+      id: "classic", categoryId: "burgers", title: "Classic Burger", description: "Beef, cheddar, pickles.",
+      image: "/menu/classic.jpg", order: 0, isVisible: true, pricingMode: "single", price: "8", sizes: [],
+    },
+  ],
+};
 
 createRoot(document.getElementById("root")!).render(
   <BrowserRouter>
-    <RestaurantSite config={config} seedMenu={seedMenu} />
+    <RestaurantSite
+      config={config}
+      seedMenu={seedMenu}
+      api={{ baseUrl: import.meta.env.VITE_MENU_API_BASE_URL, publicMenuUrl: import.meta.env.VITE_MENU_API_URL }}
+    />
   </BrowserRouter>,
 );
 ```
 
+```ts
+// worker/index.ts
+export { default } from "restaurant-kit/worker";
+```
+
+Run `vite` and open `/admin`. On `localhost` the kit uses a browser-local API that stores
+drafts in `localStorage`, so you can try the whole editor before you deploy anything. To go
+live, follow [Deploy as one Worker](#deploy-as-one-worker-recommended).
+
 `RestaurantSite` mounts the toaster and these routes: `/` (public site),
 `/admin` (menu editor), `/admin/preview`, and a catch-all redirect to `/`.
-Bring your own `BrowserRouter` so the kit can live under a larger app.
+Bring your own `BrowserRouter` so the kit can live inside a larger app. The admin routes are
+lazy-loaded: customers get about 110 kB of gzipped JS, and the editor's chunk is fetched only
+when someone opens `/admin`.
+
+### Validating seed data
+
+At runtime the kit tolerates orphans: it keeps a category whose group was deleted and hides
+an item whose category is gone. To catch those mistakes early, check the seed menu in a test
+or build step:
+
+```ts
+import { assertValidMenu, validateMenu } from "restaurant-kit";
+
+assertValidMenu(seedMenu); // throws, listing every issue (duplicate ids, orphan references, bad icons, …)
+validateMenu(seedMenu);    // or get the issues as [{ path, message }]
+```
 
 ### Composing your own routes
 
@@ -67,7 +139,18 @@ import { RestaurantKitProvider, MenuSite, AdminMenuEditor } from "restaurant-kit
 ```
 
 Individual sections (`Header`, `Hero`, `Marquee`, `MenuBrowser`, `RatingSection`,
-`LocationsSection`, `Footer`) are exported if you want a custom page layout.
+`TestimonialsSection`, `LocationsSection`, `Footer`) are exported if you want a custom page layout.
+
+When consuming the kit through `file:` or `npm link`, dedupe React so the linked package
+doesn't bring its own copy:
+
+```ts
+// vite.config.ts
+export default defineConfig({
+  plugins: [react()],
+  resolve: { dedupe: ["react", "react-dom", "react-router-dom"] },
+});
+```
 
 ## Configuration
 
@@ -121,7 +204,7 @@ Not every restaurant takes orders over WhatsApp. `ordering` switches the whole c
 ordering: { mode: "whatsapp" }
 
 // Cart off. Browse-only menu; every order button opens the delivery app / site instead.
-ordering: { mode: "external", url: "https://link.totersapp.com/…", label: "Order on Toters", shortLabel: "Order", iconSrc: "/assets/brand/toters-mark.svg" }
+ordering: { mode: "external", url: "https://example.com/order", label: "Order on Toters", shortLabel: "Order", iconSrc: "/assets/brand/toters-mark.svg" }
 ```
 
 | | `whatsapp` | `external` |
@@ -391,7 +474,7 @@ rate limiter (5 attempts per IP per minute) slows guessing but does not excuse a
 ## Development
 
 ```bash
-npm install --legacy-peer-deps
+npm install --legacy-peer-deps   # works around an npm arborist peer-set bug
 npm run typecheck
 npm run lint
 npm test
@@ -399,3 +482,7 @@ npm run build     # dist/index.js, dist/worker.js, dist/restaurant-kit.css, dist
 ```
 
 `npm run dev` runs the library build in watch mode for linked consumers.
+
+## License
+
+[MIT](./LICENSE) © Hadi Al Hassan

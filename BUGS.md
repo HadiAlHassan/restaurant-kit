@@ -57,7 +57,7 @@ clear a note with `null`/`""`; the local branch of `useRemoteMenuData` honours `
 
 ## Still worth doing (not bugs)
 
-- `validateMenu()` for consumers, so orphan references in seed data fail at build time
-  rather than being tolerated at runtime.
+- ~~`validateMenu()` for consumers, so orphan references in seed data fail at build time
+  rather than being tolerated at runtime.~~ Shipped in 0.1.0.
 - Cache the published menu with `ETag`/`If-None-Match` instead of `no-store` once traffic
   justifies it.

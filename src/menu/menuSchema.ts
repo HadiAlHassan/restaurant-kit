@@ -1,4 +1,6 @@
-export type MenuIcon = "plate" | "burger" | "wrap" | "chicken" | "platter" | "fries" | "kids" | "drink";
+export const menuIconIds = ["plate", "burger", "wrap", "chicken", "platter", "fries", "kids", "drink"] as const;
+
+export type MenuIcon = (typeof menuIconIds)[number];
 
 export type MenuGroup = {
   readonly id: string;
