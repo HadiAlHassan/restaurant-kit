@@ -1,0 +1,161 @@
+.hint {
+  max-width: 72ch;
+  margin: 0 0 22px;
+  color: var(--restaurant-muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--restaurant-stroke);
+  border-radius: 12px;
+  background: var(--restaurant-surface-tint);
+}
+
+.hiddenRow {
+  opacity: 0.62;
+}
+
+.thumb {
+  display: grid;
+  width: 72px;
+  height: 54px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--restaurant-surface-raised);
+  color: var(--restaurant-text-faint);
+  place-items: center;
+}
+
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumb svg {
+  width: 20px;
+  height: 20px;
+}
+
+.rowText {
+  min-width: 0;
+}
+
+.rowText strong {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+}
+
+.rowText p {
+  margin: 4px 0 0;
+  overflow: hidden;
+  color: var(--restaurant-muted);
+  font-size: 0.86rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowStars {
+  color: var(--restaurant-accent);
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+}
+
+.hiddenBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid var(--restaurant-warning-line);
+  border-radius: 999px;
+  background: var(--restaurant-warning-soft);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.hiddenBadge svg {
+  width: 12px;
+  height: 12px;
+}
+
+.rowActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rowActions svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ratingPicker {
+  display: flex;
+  gap: 4px;
+}
+
+.ratingPicker button {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--restaurant-stroke);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--restaurant-text-disabled);
+  cursor: pointer;
+  place-items: center;
+}
+
+.ratingPicker button:hover {
+  border-color: var(--restaurant-stroke-hover);
+}
+
+.ratingPicker svg {
+  width: 20px;
+  height: 20px;
+}
+
+.ratingPicker .filledStar {
+  color: var(--restaurant-accent);
+}
+
+.ratingPicker .filledStar svg {
+  fill: currentColor;
+}
+
+.reviewTextarea {
+  min-height: 168px;
+}
+
+@media (max-width: 640px) {
+  .row {
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
+
+  .thumb {
+    width: 56px;
+    height: 42px;
+  }
+
+  .rowActions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+}

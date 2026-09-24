@@ -40,7 +40,7 @@
   border: 1px solid var(--restaurant-stroke);
   border-radius: 999px;
   background: var(--restaurant-primary);
-  color: var(--restaurant-text);
+  color: var(--restaurant-on-primary);
   font-weight: 900;
 }
 

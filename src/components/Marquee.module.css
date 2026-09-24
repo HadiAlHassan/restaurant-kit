@@ -2,7 +2,7 @@
   overflow: hidden;
   border-block: 1px solid var(--restaurant-warning-line);
   background: var(--restaurant-primary);
-  color: var(--restaurant-text);
+  color: var(--restaurant-on-primary);
 }
 
 .track {

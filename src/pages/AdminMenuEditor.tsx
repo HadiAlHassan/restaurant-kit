@@ -11,6 +11,7 @@ import { AdminGroupsPanel } from "../admin/AdminGroupsPanel";
 import { AdminItemDrawer } from "../admin/AdminItemDrawer";
 import { AdminMenuGroupTabs } from "../admin/AdminMenuGroupTabs";
 import { AdminSectionEditor } from "../admin/AdminSectionEditor";
+import { AdminTestimonialsPanel } from "../admin/AdminTestimonialsPanel";
 import { emptyItem, sortableDataFromEntity, type SortableEntity } from "../admin/adminEditorUtils";
 import { createMenuCategoryDraft, createMenuGroupDraft, createMenuSizeDraft } from "../admin/adminMenuCommands";
 import { useAdminDraft } from "../admin/useAdminDraft";
@@ -39,6 +40,7 @@ export function AdminMenuEditor() {
     restoreDraft,
     listBackups,
     applyCommand,
+    applyMenuMutation,
     uploadingItemIds,
     uploadItemImage,
     removeItemImage,
@@ -49,15 +51,13 @@ export function AdminMenuEditor() {
   const [reorderingSectionId, setReorderingSectionId] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [isBackupsOpen, setIsBackupsOpen] = useState(false);
+  const [view, setView] = useState<"menu" | "reviews">("menu");
 
   const orderedMenu = useMemo(() => getOrderedMenu(draftMenu), [draftMenu]);
   const visibleGroups = useMemo(() => orderedMenu.groups.map(({ group }) => group), [orderedMenu]);
   const categories = useMemo(() => orderedMenu.sections.map(({ section }) => section), [orderedMenu.sections]);
   const orderedItemsByCategory = useMemo(() => new Map(orderedMenu.sections.map(({ section, items }) => [section.id, items])), [orderedMenu.sections]);
-  const visibleCategories = useMemo(
-    () => categories.filter((category) => activeGroupId === "all" || category.groupId === activeGroupId),
-    [activeGroupId, categories],
-  );
+  const visibleCategories = useMemo(() => categories.filter((category) => activeGroupId === "all" || category.groupId === activeGroupId), [activeGroupId, categories]);
   const groupLabelMap = useMemo(() => new Map(visibleGroups.map((group) => [group.id, group.label])), [visibleGroups]);
   const editingItem = draftMenu.items.find((item) => item.id === editingItemId) ?? null;
   const canSignOut = authSession?.strategy === "password" && authSession.authenticated;
@@ -261,7 +261,7 @@ export function AdminMenuEditor() {
         <header className={styles.header}>
           <div>
             <p className="micro-label">Owner dashboard</p>
-            <h1>Menu editor</h1>
+            <h1>{view === "menu" ? "Menu editor" : "Customer reviews"}</h1>
             <span className={styles.syncStatus}>{isLoadingDraft ? "Loading remote draft" : hasUnsavedChanges ? "Unsaved changes" : "Remote draft synced"}</span>
           </div>
           <div className={styles.headerActions}>
@@ -312,7 +312,18 @@ export function AdminMenuEditor() {
           />
         ) : null}
 
-        <section className={styles.menuEditor} aria-label="Editable menu">
+        <div className={`${styles.segmented} ${styles.viewSwitch}`} role="tablist" aria-label="What to edit">
+          <button className={view === "menu" ? styles.selectedSegment : ""} type="button" role="tab" aria-selected={view === "menu"} onClick={() => setView("menu")}>
+            Menu
+          </button>
+          <button className={view === "reviews" ? styles.selectedSegment : ""} type="button" role="tab" aria-selected={view === "reviews"} onClick={() => setView("reviews")}>
+            Reviews{draftMenu.testimonials?.length ? ` (${draftMenu.testimonials.length})` : ""}
+          </button>
+        </div>
+
+        {view === "reviews" ? <AdminTestimonialsPanel menu={draftMenu} applyMenuMutation={applyMenuMutation} /> : null}
+
+        <section className={styles.menuEditor} aria-label="Editable menu" hidden={view !== "menu"}>
           <div className={styles.controlStrip}>
             <div className={styles.tabToolbar}>
               <span>Select a menu group. Double-click a tab to rename it.</span>

@@ -99,7 +99,7 @@
 .activeTab {
   border-color: var(--restaurant-accent);
   background: var(--restaurant-primary);
-  color: var(--restaurant-text);
+  color: var(--restaurant-on-primary);
 }
 
 .activeTab .tabIcon {
@@ -403,7 +403,7 @@
 .selectedVariationTab {
   border-color: var(--restaurant-accent);
   background: var(--restaurant-primary);
-  color: var(--restaurant-text);
+  color: var(--restaurant-on-primary);
 }
 
 .selectedVariationTab strong {
@@ -462,7 +462,7 @@
   border: 1px solid var(--restaurant-stroke);
   border-radius: 8px;
   background: var(--restaurant-primary);
-  color: var(--restaurant-text);
+  color: var(--restaurant-on-primary);
   cursor: pointer;
   font: inherit;
   font-size: 0.9rem;
@@ -725,7 +725,7 @@
   border: 1px solid var(--restaurant-stroke-strong);
   border-radius: 999px;
   background: var(--restaurant-primary);
-  color: var(--restaurant-text);
+  color: var(--restaurant-on-primary);
   cursor: pointer;
   font: inherit;
   font-size: 0.95rem;
@@ -856,7 +856,7 @@
   border: 1px solid var(--restaurant-stroke-strong);
   border-radius: 50%;
   background: var(--restaurant-primary);
-  color: var(--restaurant-text);
+  color: var(--restaurant-on-primary);
   cursor: pointer;
   place-items: center;
   box-shadow: 0 6px 14px var(--restaurant-shadow-medium);
@@ -1248,7 +1248,7 @@
   border: 1px solid var(--restaurant-stroke);
   border-radius: 8px;
   background: var(--restaurant-primary);
-  color: var(--restaurant-text);
+  color: var(--restaurant-on-primary);
   cursor: pointer;
   font: inherit;
   font-size: 0.92rem;

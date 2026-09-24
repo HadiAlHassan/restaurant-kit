@@ -89,6 +89,29 @@ Individual sections (`Header`, `Hero`, `Marquee`, `MenuBrowser`, `RatingSection`
 | `footerNote` | Footer line under the address |
 | `ordering` | Optional. How customers order — see [Ordering modes](#ordering-modes) |
 
+### Testimonials
+
+An optional section of owner-curated customer reviews (typically copied from Google Maps, with
+the photo the customer posted). It is **data, not config**: reviews live in the menu JSON as
+`testimonials`, so they ride the same draft → publish → backup flow as the menu, and the owner
+manages them under **Reviews** in `/admin` (add, edit, star rating, photo upload, link to the
+original review, show/hide, reorder). Photos are downscaled to 1400px JPEG in the browser
+before upload.
+
+`MenuSite` has one "what customers say" slot. With no visible testimonial it shows the plain
+`<RatingSection />` exactly as before; once a testimonial is visible and has text,
+`<TestimonialsSection />` takes the slot (and the `#restaurant` anchor) and folds the score —
+`rating`, `reviewCount`, `ratingCopy` — into its header above a carousel of review cards. Copy is optional config:
+
+```ts
+testimonialsEyebrow: "Straight from Google Maps",          // small label above; omitted by default
+testimonialsHeadline: "Our customers' cameras don't lie.", // default
+```
+
+There is no Google Places integration on purpose: the API needs a billed key, returns at most
+five reviews, and its terms forbid storing them. Only add reviews that are already public, and
+keep the link back to the original.
+
 ### Ordering modes
 
 Not every restaurant takes orders over WhatsApp. `ordering` switches the whole cart feature:

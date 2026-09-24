@@ -43,6 +43,9 @@ export type RestaurantSiteConfig = {
   readonly ratingHeadline: string;
   readonly ratingCopy: string;
   readonly footerNote: string;
+  /** Optional copy for the Testimonials section (shown only when the menu has visible testimonials). */
+  readonly testimonialsEyebrow?: string;
+  readonly testimonialsHeadline?: string;
   /** Optional. Omit for the default WhatsApp cart. */
   readonly ordering?: OrderingConfig;
 };

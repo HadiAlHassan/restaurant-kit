@@ -80,6 +80,7 @@
 .primaryButton {
   border-color: var(--restaurant-accent);
   background: var(--restaurant-primary);
+  color: var(--restaurant-on-primary);
 }
 
 .secondaryButton:hover,
@@ -268,7 +269,7 @@
 .activeTab {
   border-color: var(--restaurant-accent);
   background: var(--restaurant-primary);
-  color: var(--restaurant-text);
+  color: var(--restaurant-on-primary);
 }
 
 .dragging {
@@ -908,7 +909,7 @@
 .drawerImageTool:focus-visible {
   border-color: var(--restaurant-accent);
   background: var(--restaurant-primary);
-  color: var(--restaurant-text);
+  color: var(--restaurant-on-primary);
   transform: translateY(-1px);
 }
 
@@ -1030,7 +1031,7 @@
 
 .currencyToggle .selectedCurrency {
   background: var(--restaurant-primary);
-  color: var(--restaurant-text);
+  color: var(--restaurant-on-primary);
 }
 
 .segmented {
@@ -1053,6 +1054,7 @@
 
 .segmented .selectedSegment {
   background: var(--restaurant-primary);
+  color: var(--restaurant-on-primary);
 }
 
 .sizeEditor {
@@ -1807,4 +1809,11 @@
   margin: 0;
   padding: 0 20px 20px;
   color: var(--restaurant-muted);
+}
+
+/* Menu / Reviews switch under the page header. */
+.viewSwitch {
+  width: min(320px, 100%);
+  max-width: 1720px;
+  margin: 0 auto 22px 0;
 }

@@ -104,7 +104,7 @@
 
 .accent {
   background: var(--restaurant-primary);
-  color: var(--restaurant-text);
+  color: var(--restaurant-on-primary);
 }
 
 .accent span,
