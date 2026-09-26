@@ -17,6 +17,19 @@ export type OrderingConfig =
       readonly iconSrc?: string;
     };
 
+/** A link inside a footer notice. `http(s)` links open in a new tab. */
+export type FooterLink = { readonly label: string; readonly href: string };
+
+/** One footer line: text and links rendered in order. */
+export type FooterNotice = readonly (string | FooterLink)[];
+
+export type FooterConfig = {
+  /** Replaces "© {year} {brandName}. All rights reserved." `{year}` becomes the current year. */
+  readonly legal?: string;
+  /** Extra lines under the footer, e.g. a disclaimer or credits. */
+  readonly notices?: readonly FooterNotice[];
+};
+
 export type RestaurantSiteConfig = {
   readonly restaurantId: string;
   readonly brandName: string;
@@ -43,6 +56,8 @@ export type RestaurantSiteConfig = {
   readonly ratingHeadline: string;
   readonly ratingCopy: string;
   readonly footerNote: string;
+  /** Optional. Custom legal line and extra footer notices. */
+  readonly footer?: FooterConfig;
   /** Optional copy for the Testimonials section (shown only when the menu has visible testimonials). */
   readonly testimonialsEyebrow?: string;
   readonly testimonialsHeadline?: string;

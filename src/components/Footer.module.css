@@ -1,8 +1,7 @@
 .footer {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
+  flex-direction: column;
+  gap: 14px;
   padding: 24px max(28px, calc((100vw - 1240px) / 2));
   border-top: 1px solid var(--restaurant-accent-wash);
   background: var(--restaurant-surface);
@@ -10,8 +9,16 @@
   font-size: 0.86rem;
 }
 
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
 .legal,
-.note {
+.note,
+.notice {
   margin: 0;
 }
 
@@ -19,8 +26,28 @@
   color: var(--restaurant-text-warm);
 }
 
+.notices {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 14px;
+  border-top: 1px solid var(--restaurant-accent-wash);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.notice a {
+  color: var(--restaurant-text-warm);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.notice a:hover {
+  color: var(--restaurant-accent-soft);
+}
+
 @media (max-width: 980px) {
-  .footer {
+  .row {
     flex-direction: column;
     align-items: start;
     gap: 6px;

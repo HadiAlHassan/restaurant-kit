@@ -4,7 +4,13 @@ export { RestaurantSite } from "./RestaurantSiteRoutes";
 
 export { RestaurantKitProvider } from "./config/RestaurantKitProvider";
 export { useMenuApi, useRestaurantKit, useSeedMenu, useSiteConfig, type RestaurantKitApiOptions, type RestaurantKitValue } from "./config/siteConfigContext";
-export type { OrderingConfig, RestaurantSiteConfig } from "./config/siteTypes";
+export type {
+  FooterConfig,
+  FooterLink,
+  FooterNotice,
+  OrderingConfig,
+  RestaurantSiteConfig,
+} from "./config/siteTypes";
 export { useOrdering, type ResolvedOrdering } from "./config/useOrdering";
 
 export { MenuSite } from "./pages/MenuSite";
