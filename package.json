@@ -1,6 +1,6 @@
 {
   "name": "restaurant-kit",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Restaurant website kit for React + Cloudflare: public menu, WhatsApp or delivery-app ordering, owner-editable menu CMS, and a Worker API backed by R2.",
   "keywords": [
     "restaurant",
