@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0 — 2026-09-26
+
+- Footer: optional `footer` config. `footer.legal` replaces the default copyright line
+  (`{year}` is filled in) and `footer.notices` adds lines of text and links, e.g. a
+  disclaimer or credits.
+
 ## 0.1.0 — 2026-09-24
 
 First public release.

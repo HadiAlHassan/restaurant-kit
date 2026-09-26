@@ -170,6 +170,7 @@ export default defineConfig({
 | `heroEyebrow`, `heroSubline` | Hero copy |
 | `ratingHeadline`, `ratingCopy` | Rating section copy |
 | `footerNote` | Footer line under the address |
+| `footer` | Optional. `legal` replaces the "© {year} brand. All rights reserved." line (`{year}` is filled in); `notices` adds extra lines, each a list of strings and `{ label, href }` links |
 | `ordering` | Optional. How customers order — see [Ordering modes](#ordering-modes) |
 
 ### Testimonials
