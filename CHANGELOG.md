@@ -8,6 +8,8 @@
   on custom domains; publish purges the local data center's copy. CORS headers are added per
   request, never cached.
 - Site: the public menu fetch uses `cache: "no-cache"` so the browser revalidates with the ETag.
+- README: step-by-step WAF rate-limiting rule for `/api/menu`, which is what actually
+  protects the Workers request quota from a request loop.
 
 ## 0.2.1 — 2026-09-28
 
