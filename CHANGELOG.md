@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.1 — 2026-09-28
+
+- Worker: request bodies are size-capped before parsing (2 MB menu JSON, 5 MB image upload,
+  4 KB login), counting streamed bytes so a missing Content-Length can't bypass it. Oversized
+  requests get 413.
+- Worker: malformed percent-encoding in `/api/assets/…` returns 404 instead of 500.
+- Site: an unknown group icon falls back to the plate icon, and an error boundary shows a
+  "reload" page instead of a blank screen if rendering fails.
+- `restaurant-kit-bootstrap`: `--dev-vars` adds `.dev.vars` to `.gitignore` if missing; wrangler
+  is pinned to `wrangler@4`; `--help` warns that `--password` lands in shell history.
+
 ## 0.2.0 — 2026-09-26
 
 - Footer: optional `footer` config. `footer.legal` replaces the default copyright line

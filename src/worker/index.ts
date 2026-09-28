@@ -1,6 +1,7 @@
 import { buildClearedSessionCookie, getAdminIdentity, getAdminSessionInfo, isTrustedOrigin, loginWithPassword, resolveAdminAuthStrategy, type AuthEnv } from "./auth";
+import { readBodyWithLimit } from "./body";
 import { getCorsHeaders, getSafeReturnTo, jsonResponse, redirectResponse, RequestError } from "./http";
-import { allowedImageTypes, createMenuStorage, type MenuStorage, type R2Bucket, type RestoreSource } from "./menuStorage";
+import { allowedImageTypes, createMenuStorage, maxImageUploadBytes, type MenuStorage, type R2Bucket, type RestoreSource } from "./menuStorage";
 
 type AssetsBinding = {
   fetch(request: Request): Promise<Response>;
@@ -24,17 +25,24 @@ function assertMenuShape(value: unknown) {
   if (!Array.isArray(menu.items)) throw new RequestError("Menu items must be an array.", 400);
 }
 
+// The API never needs anywhere near the platform's ~100 MB body cap. Reading through
+// readBodyWithLimit rejects an oversized payload early, whether or not Content-Length is sent.
+const maxJsonBodyBytes = 2 * 1024 * 1024;
+const maxUploadBodyBytes = maxImageUploadBytes + 64 * 1024; // image + multipart overhead
+
 async function readJsonBody(request: Request) {
+  const body = await readBodyWithLimit(request, maxJsonBodyBytes);
   try {
-    return await request.json();
+    return JSON.parse(new TextDecoder().decode(body));
   } catch {
     throw new RequestError("Request body must be valid JSON.", 400);
   }
 }
 
 async function readFormData(request: Request) {
+  const body = await readBodyWithLimit(request, maxUploadBodyBytes);
   try {
-    return await request.formData();
+    return await new Response(body, { headers: { "content-type": request.headers.get("content-type") ?? "" } }).formData();
   } catch {
     throw new RequestError("Request body must be multipart form data.", 400);
   }
@@ -53,7 +61,12 @@ async function handlePublicMenu(storage: MenuStorage, corsHeaders: Record<string
 
 async function handleAsset(request: Request, storage: MenuStorage, corsHeaders: Record<string, string>) {
   const url = new URL(request.url);
-  const key = decodeURIComponent(url.pathname.replace(/^\/api\/assets\//, ""));
+  let key: string;
+  try {
+    key = decodeURIComponent(url.pathname.replace(/^\/api\/assets\//, ""));
+  } catch {
+    return new Response("Not found", { status: 404 });
+  }
   const object = await storage.getAsset(key);
   if (!object) return new Response("Not found", { status: 404 });
 

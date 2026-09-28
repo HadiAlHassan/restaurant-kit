@@ -1,4 +1,4 @@
-import { menuIcons } from "../menu/menuIcons";
+import { menuIconFor } from "../menu/menuIcons";
 import type { MenuGroup } from "../menu/menuSchema";
 import { cx } from "../utils";
 import styles from "./AdminMenuEditor.module.css";
@@ -16,7 +16,7 @@ export function AdminMenuGroupTabs({ activeGroupId, editingGroupId, groups, onSe
   return (
     <div className={styles.tabs} role="tablist" aria-label="Menu groups">
       {groups.map((group) => {
-        const Icon = menuIcons[group.icon];
+        const Icon = menuIconFor(group.icon);
         const isActive = group.id === activeGroupId;
         const isPinned = group.id === "all";
         const isEditing = editingGroupId === group.id;

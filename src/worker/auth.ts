@@ -1,4 +1,5 @@
 import { getAllowedOrigins, type HttpEnv } from "./http";
+import { readBodyWithLimit } from "./body";
 
 /**
  * Admin authentication for the menu API.
@@ -298,6 +299,9 @@ function getClientKey(request: Request) {
   return request.headers.get("cf-connecting-ip") ?? "unknown";
 }
 
+// A password body is tiny; anything bigger is rejected before parsing (and before rate limiting runs).
+const maxLoginBodyBytes = 4 * 1024;
+
 export async function loginWithPassword(request: Request, env: AuthEnv): Promise<LoginResult> {
   if (resolveAdminAuthStrategy(env) !== "password") {
     return { status: "misconfigured", message: "Password sign-in is not enabled for this API." };
@@ -311,7 +315,7 @@ export async function loginWithPassword(request: Request, env: AuthEnv): Promise
 
   let password = "";
   try {
-    const body = (await request.json()) as { password?: unknown };
+    const body = JSON.parse(new TextDecoder().decode(await readBodyWithLimit(request, maxLoginBodyBytes))) as { password?: unknown };
     password = typeof body.password === "string" ? body.password : "";
   } catch {
     return { status: "bad-request", message: "Expected a JSON body with a password field." };

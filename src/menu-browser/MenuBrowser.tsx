@@ -1,4 +1,4 @@
-import { menuIcons } from "../menu/menuIcons";
+import { menuIconFor } from "../menu/menuIcons";
 import type { DynamicMenu } from "../menu/menuSchema";
 import { cx } from "../utils";
 import styles from "./MenuBrowser.module.css";
@@ -27,7 +27,7 @@ export function MenuBrowser({ menu }: MenuBrowserProps) {
           <div className={cx(styles.controlStrip, isTabsStuck && styles.stuckControlStrip)} ref={controlStripRef}>
             <div className={styles.tabs} role="tablist" aria-label="Menu cravings" ref={tabsRef}>
               {visibleGroups.map((group) => {
-                const Icon = menuIcons[group.icon];
+                const Icon = menuIconFor(group.icon);
                 const isActive = group.id === activeGroup;
 
                 return (
