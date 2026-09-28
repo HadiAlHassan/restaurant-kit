@@ -244,51 +244,72 @@ function handleLogout(request: Request, corsHeaders: Record<string, string>) {
   return jsonResponse({ ok: true }, { headers: { ...noStoreHeaders, "set-cookie": buildClearedSessionCookie(request) } }, corsHeaders);
 }
 
+// Baseline hardening on every API response. The static site gets its headers from a `_headers`
+// file instead (see README), because Cloudflare serves matched assets without running the Worker.
+const apiSecurityHeaders: Record<string, string> = {
+  "x-content-type-options": "nosniff",
+  "referrer-policy": "strict-origin-when-cross-origin",
+  "x-frame-options": "DENY",
+  "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+  "strict-transport-security": "max-age=31536000",
+};
+
+function withApiSecurityHeaders(response: Response) {
+  const headers = new Headers(response.headers);
+  Object.entries(apiSecurityHeaders).forEach(([name, value]) => {
+    if (!headers.has(name)) headers.set(name, value);
+  });
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
+async function routeApi(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+
+  const corsHeaders = getCorsHeaders(request, env);
+  const storage = createMenuStorage(env.MENU_BUCKET, env.RESTAURANT_ID);
+
+  try {
+    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
+    if (request.method === "GET" && url.pathname === "/api/menu") return await handlePublicMenu(request, storage, corsHeaders);
+    if (request.method === "GET" && url.pathname.startsWith("/api/assets/")) return await handleAsset(request, storage, corsHeaders);
+    if (request.method === "GET" && url.pathname === "/api/admin/sign-in") return redirectResponse(getSafeReturnTo(request, env), corsHeaders);
+    if (request.method === "GET" && url.pathname === "/api/admin/session") return await handleSession(request, env, corsHeaders);
+
+    // Every state-changing admin call (login included) must come from this site or an allowed origin.
+    if (url.pathname.startsWith("/api/admin/") && request.method !== "GET" && !isTrustedOrigin(request, env)) {
+      return jsonResponse({ error: "Cross-origin request blocked." }, { status: 403 }, corsHeaders);
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/admin/login") return await handleLogin(request, env, corsHeaders);
+    if (request.method === "POST" && url.pathname === "/api/admin/logout") return await handleLogout(request, corsHeaders);
+
+    if (url.pathname.startsWith("/api/admin/") && !(await getAdminIdentity(request, env))) {
+      return jsonResponse({ error: "Unauthorized.", strategy: resolveAdminAuthStrategy(env) }, { status: 401, headers: noStoreHeaders }, corsHeaders);
+    }
+
+    if (url.pathname === "/api/admin/menu/draft") return await handleDraftMenu(request, storage, corsHeaders);
+    if (request.method === "POST" && url.pathname === "/api/admin/menu/publish") return await handlePublish(request, storage, corsHeaders);
+    if (request.method === "GET" && url.pathname === "/api/admin/menu/backups") return await handleBackups(storage, corsHeaders);
+    if (request.method === "POST" && url.pathname === "/api/admin/menu/restore") return await handleRestore(request, storage, corsHeaders);
+    if (request.method === "POST" && url.pathname === "/api/admin/images") return await handleImageUpload(request, storage, corsHeaders);
+    if (request.method === "DELETE" && url.pathname === "/api/admin/images") return await handleImageDelete(request, storage, corsHeaders);
+
+    return jsonResponse({ error: "Not found." }, { status: 404 }, corsHeaders);
+  } catch (error) {
+    // `return await` above is what makes handler rejections land here instead of surfacing
+    // as a Cloudflare 1101 page. Client errors keep their status; everything else is a 500.
+    if (error instanceof RequestError) return jsonResponse({ error: error.message }, { status: error.status }, corsHeaders);
+    console.error("menu api error", error);
+    return jsonResponse({ error: "Unexpected error." }, { status: 500 }, corsHeaders);
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env) {
-    const url = new URL(request.url);
-
     // Single-Worker deployments: anything outside /api/ is a static asset (SPA fallback handled by Cloudflare).
-    if (!url.pathname.startsWith("/api/") && env.ASSETS) return env.ASSETS.fetch(request);
+    if (!new URL(request.url).pathname.startsWith("/api/") && env.ASSETS) return env.ASSETS.fetch(request);
 
-    const corsHeaders = getCorsHeaders(request, env);
-    const storage = createMenuStorage(env.MENU_BUCKET, env.RESTAURANT_ID);
-
-    try {
-      if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
-      if (request.method === "GET" && url.pathname === "/api/menu") return await handlePublicMenu(request, storage, corsHeaders);
-      if (request.method === "GET" && url.pathname.startsWith("/api/assets/")) return await handleAsset(request, storage, corsHeaders);
-      if (request.method === "GET" && url.pathname === "/api/admin/sign-in") return redirectResponse(getSafeReturnTo(request, env), corsHeaders);
-      if (request.method === "GET" && url.pathname === "/api/admin/session") return await handleSession(request, env, corsHeaders);
-
-      // Every state-changing admin call (login included) must come from this site or an allowed origin.
-      if (url.pathname.startsWith("/api/admin/") && request.method !== "GET" && !isTrustedOrigin(request, env)) {
-        return jsonResponse({ error: "Cross-origin request blocked." }, { status: 403 }, corsHeaders);
-      }
-
-      if (request.method === "POST" && url.pathname === "/api/admin/login") return await handleLogin(request, env, corsHeaders);
-      if (request.method === "POST" && url.pathname === "/api/admin/logout") return await handleLogout(request, corsHeaders);
-
-      if (url.pathname.startsWith("/api/admin/") && !(await getAdminIdentity(request, env))) {
-        return jsonResponse({ error: "Unauthorized.", strategy: resolveAdminAuthStrategy(env) }, { status: 401, headers: noStoreHeaders }, corsHeaders);
-      }
-
-      if (url.pathname === "/api/admin/menu/draft") return await handleDraftMenu(request, storage, corsHeaders);
-      if (request.method === "POST" && url.pathname === "/api/admin/menu/publish") return await handlePublish(request, storage, corsHeaders);
-      if (request.method === "GET" && url.pathname === "/api/admin/menu/backups") return await handleBackups(storage, corsHeaders);
-      if (request.method === "POST" && url.pathname === "/api/admin/menu/restore") return await handleRestore(request, storage, corsHeaders);
-      if (request.method === "POST" && url.pathname === "/api/admin/images") return await handleImageUpload(request, storage, corsHeaders);
-      if (request.method === "DELETE" && url.pathname === "/api/admin/images") return await handleImageDelete(request, storage, corsHeaders);
-
-      return jsonResponse({ error: "Not found." }, { status: 404 }, corsHeaders);
-    } catch (error) {
-      // `return await` above is what makes handler rejections land here instead of surfacing
-      // as a Cloudflare 1101 page. Client errors keep their status; everything else is a 500.
-      if (error instanceof RequestError) return jsonResponse({ error: error.message }, { status: error.status }, corsHeaders);
-      console.error("menu api error", error);
-      return jsonResponse({ error: "Unexpected error." }, { status: 500 }, corsHeaders);
-    }
+    return withApiSecurityHeaders(await routeApi(request, env));
   },
 };
 
-export { hashPassword, verifyPassword, resolveAdminAuthStrategy, type AdminAuthStrategy, type AuthEnv } from "./auth";

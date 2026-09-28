@@ -386,6 +386,38 @@ on the menu URL to burn through the Workers free plan (100k requests/day). A WAF
 rate-limiting rule does: it blocks at Cloudflare's edge before the Worker runs, and blocked
 requests are not billed as Worker requests.
 
+#### Security headers for the site
+
+API responses (`/api/*`) get `nosniff`, `Referrer-Policy`, `X-Frame-Options: DENY`, a
+lock-down CSP and HSTS from the Worker. The site's own pages and files are served by
+Cloudflare straight from static assets, without running the Worker, so they need a
+`_headers` file. Create `public/_headers` in your site (Vite copies it into `dist/`):
+
+```
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
+  Strict-Transport-Security: max-age=31536000
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Cross-Origin-Opener-Policy: same-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+```
+
+Adjust the CSP to what your site loads:
+
+- Drop the two Google Fonts origins if you self-host fonts.
+- `style-src 'unsafe-inline'` is needed because the toast library injects a `<style>` tag.
+- `img-src https:` allows menu photos from any HTTPS host. Narrow it if all images come
+  from your own domain.
+- If uploaded images live on another host (e.g. an `api.` subdomain), add that origin to
+  `connect-src`: the editor fetches an existing photo to re-crop it.
+- Cloudflare Web Analytics or other injected scripts need their origin in `script-src`.
+
+Also turn on **SSL/TLS** > **Edge Certificates** > **Always Use HTTPS** for the zone, so
+`http://` requests redirect before reaching the site. Load the admin and a menu page with
+the browser console open after deploying; any CSP violation is logged there.
+
 #### Rate-limit `/api/menu` with a WAF rule
 
 Needs the site on a custom domain in a Cloudflare zone; `workers.dev` hosts have no WAF.
