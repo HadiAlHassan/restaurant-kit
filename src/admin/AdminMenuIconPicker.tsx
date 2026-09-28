@@ -1,6 +1,6 @@
 import * as Popover from "@radix-ui/react-popover";
 import { ChevronDown } from "lucide-react";
-import { menuIconOptions, menuIcons } from "../menu/menuIcons";
+import { menuIconFor, menuIconOptions, menuIcons } from "../menu/menuIcons";
 import type { MenuIcon } from "../menu/menuSchema";
 import { cx } from "../utils";
 import styles from "./AdminMenuEditor.module.css";
@@ -12,7 +12,7 @@ type AdminMenuIconPickerProps = {
 };
 
 export function AdminMenuIconPicker({ label, value, onChange }: AdminMenuIconPickerProps) {
-  const CurrentIcon = menuIcons[value];
+  const CurrentIcon = menuIconFor(value);
   const currentLabel = menuIconOptions.find((option) => option.id === value)?.label ?? value;
 
   return (

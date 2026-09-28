@@ -5,6 +5,8 @@
 //   npx restaurant-kit-bootstrap --bucket demo-menu --restaurant demo
 //   npx restaurant-kit-bootstrap --dev-vars            # writes .dev.vars for `wrangler dev`
 //
+// --password <pw> skips the prompt but stays in shell history and `ps`; prefer the prompt.
+//
 // Steps (each skippable with --skip-<step>): bucket, seed, secrets, dry-run. Run from the site
 // directory (where wrangler.toml lives). Needs `wrangler login` done first.
 import { spawnSync } from "node:child_process";
@@ -15,7 +17,7 @@ import { hashPassword, randomSessionSecret, readPassword } from "./lib/password.
 
 const args = parseArgs(process.argv.slice(2));
 if (args.help) {
-  console.log(readFileSync(new URL(import.meta.url)).toString().split("\n").slice(1, 9).map((line) => line.replace(/^\/\/ ?/, "")).join("\n"));
+  console.log(readFileSync(new URL(import.meta.url)).toString().split("\n").slice(1, 11).map((line) => line.replace(/^\/\/ ?/, "")).join("\n"));
   process.exit(0);
 }
 
@@ -23,8 +25,11 @@ const envFlag = args.env ? ["--env", args.env] : [];
 const restaurantId = args.restaurant ?? readRestaurantIdFromToml(args.env);
 const label = args.env ? `env "${args.env}"` : "production";
 
+// Pinned to a major so npx never pulls an arbitrary release; a site-local wrangler 4.x is used as-is.
+const wranglerPackage = "wrangler@4";
+
 function wrangler(cmdArgs, options = {}) {
-  const result = spawnSync("npx", ["wrangler", ...cmdArgs], {
+  const result = spawnSync("npx", [wranglerPackage, ...cmdArgs], {
     stdio: options.input === undefined ? "inherit" : ["pipe", "inherit", "inherit"],
     input: options.input,
     encoding: "utf8",
@@ -47,6 +52,7 @@ if (args["dev-vars"]) {
   } else {
     const password = await readPassword(args.password);
     writeFileSync(".dev.vars", `ADMIN_PASSWORD_HASH="${hashPassword(password)}"\nADMIN_SESSION_SECRET="${randomSessionSecret()}"\n`, { mode: 0o600 });
+    ensureGitignored(".dev.vars");
     console.log("Wrote .dev.vars (gitignored). Start the stack with:\n  npx wrangler dev            # API + built site on :8787\n  npm run dev:worker          # vite on :5173 talking to :8787");
   }
   process.exit(0);
@@ -122,4 +128,11 @@ function readRestaurantIdFromToml(env) {
   const section = env ? toml.split(`[env.${env}.vars]`)[1] : undefined;
   const match = section?.match(/RESTAURANT_ID\s*=\s*"([^"]+)"/) ?? toml.match(/RESTAURANT_ID\s*=\s*"([^"]+)"/);
   return match?.[1] ?? "restaurant";
+}
+
+function ensureGitignored(entry) {
+  let current = existsSync(".gitignore") ? readFileSync(".gitignore", "utf8") : "";
+  if (current.split(/\r?\n/).some((line) => line.trim() === entry || line.trim() === `/${entry}`)) return;
+  if (current && !current.endsWith("\n")) current += "\n";
+  writeFileSync(".gitignore", `${current}${entry}\n`);
 }

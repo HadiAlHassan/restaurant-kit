@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
+import { ErrorBoundary, SiteErrorFallback } from "./components/ErrorBoundary";
 import { RestaurantKitProvider } from "./config/RestaurantKitProvider";
 import type { RestaurantKitApiOptions } from "./config/siteConfigContext";
 import type { RestaurantSiteConfig } from "./config/siteTypes";
@@ -24,16 +25,18 @@ export function RestaurantSite({ config, seedMenu, api }: RestaurantSiteProps) {
   return (
     <RestaurantKitProvider config={config} seedMenu={seedMenu} api={api}>
       <Toaster closeButton richColors position="top-center" />
-      <Suspense fallback={null}>
-        <Routes>
-          <Route path="/" element={<MenuSite />} />
-          <Route element={<AdminLayout />}>
-            <Route path="/admin" element={<AdminMenuEditor />} />
-            <Route path="/admin/preview" element={<AdminPreview />} />
-          </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
+      <ErrorBoundary fallback={<SiteErrorFallback />}>
+        <Suspense fallback={null}>
+          <Routes>
+            <Route path="/" element={<MenuSite />} />
+            <Route element={<AdminLayout />}>
+              <Route path="/admin" element={<AdminMenuEditor />} />
+              <Route path="/admin/preview" element={<AdminPreview />} />
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+      </ErrorBoundary>
     </RestaurantKitProvider>
   );
 }
