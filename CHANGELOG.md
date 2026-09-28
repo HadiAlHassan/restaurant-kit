@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1 — 2026-09-28
+
+- Worker: every `/api/*` response carries `X-Content-Type-Options`, `Referrer-Policy`,
+  `X-Frame-Options`, a `default-src 'none'` CSP and HSTS. Static-asset responses are untouched.
+- README: `_headers` template for the site's own pages (CSP, HSTS, framing, referrer) and the
+  Always Use HTTPS zone setting.
+
 ## 0.3.0 — 2026-09-28
 
 - Worker: publishing validates the draft with `validateMenu` and refuses an invalid menu with

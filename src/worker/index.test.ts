@@ -332,3 +332,22 @@ describe("publish validation", () => {
     expect(bucket.put).not.toHaveBeenCalled();
   });
 });
+
+describe("API security headers", () => {
+  it("adds baseline hardening headers to API responses, errors included", async () => {
+    const response = await worker.fetch(new Request("https://demo-restaurant.com/api/nope"), accessEnv);
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(response.headers.get("x-frame-options")).toBe("DENY");
+    expect(response.headers.get("content-security-policy")).toContain("frame-ancestors 'none'");
+    expect(response.headers.get("strict-transport-security")).toBe("max-age=31536000");
+  });
+
+  it("leaves static-asset responses to the ASSETS binding untouched", async () => {
+    const assets = { fetch: vi.fn().mockResolvedValue(new Response("<html></html>")) };
+    const response = await worker.fetch(new Request("https://demo-restaurant.com/"), { ...accessEnv, ASSETS: assets });
+
+    expect(response.headers.get("x-frame-options")).toBeNull();
+  });
+});
