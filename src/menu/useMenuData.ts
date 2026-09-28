@@ -38,7 +38,7 @@ function useRemoteMenuData(enabled: boolean) {
     let isMounted = true;
     setStatus("loading");
 
-    fetch(menuApiUrl, { cache: "no-store" })
+    fetch(menuApiUrl, { cache: "no-cache" })
       .then((response) => {
         if (!response.ok) throw new Error(`Menu request failed: ${response.status}`);
         return response.json() as Promise<DynamicMenu>;

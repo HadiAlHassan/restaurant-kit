@@ -49,7 +49,7 @@ describe("useMenuData", () => {
     await vi.waitFor(() => expect(result.current.status).toBe("remote"));
 
     expect(readMenuDraft).not.toHaveBeenCalled();
-    expect(fetchMock).toHaveBeenCalledWith("http://localhost:8787/api/menu", { cache: "no-store" });
+    expect(fetchMock).toHaveBeenCalledWith("http://localhost:8787/api/menu", { cache: "no-cache" });
     vi.unstubAllGlobals();
   });
 });

@@ -374,6 +374,44 @@ image prefix; served with a content type from the image allowlist or as an opaqu
 `GET /api/admin/sign-in` (Access redirect), `GET|PUT /api/admin/menu/draft`,
 `POST /api/admin/menu/publish`, `POST|DELETE /api/admin/images`.
 
+Publishing runs the same `validateMenu` check as your seed data and refuses (400, listing the
+first issues) a draft that would break the public site, e.g. an unknown icon or a "sizes" item
+with no sizes. Draft saves only get a shallow shape check, so half-finished edits still save.
+
+`GET /api/menu` is cached at the edge for up to 60 seconds (custom domains only; `workers.dev`
+has no edge cache) and carries an `ETag`, so returning visitors get a `304`. Publishing purges
+the cache in the data center that handled the publish; others catch up within the minute.
+Cached hits still count as Worker requests, so caching alone does not stop someone looping
+on the menu URL to burn through the Workers free plan (100k requests/day). A WAF
+rate-limiting rule does: it blocks at Cloudflare's edge before the Worker runs, and blocked
+requests are not billed as Worker requests.
+
+#### Rate-limit `/api/menu` with a WAF rule
+
+Needs the site on a custom domain in a Cloudflare zone; `workers.dev` hosts have no WAF.
+The Free plan allows one rate-limiting rule, counted per IP over 10 seconds.
+
+1. In the Cloudflare dashboard, open your site's zone and go to **Security rules**.
+2. Select **Create rule** > **Rate limiting rules**.
+3. **Rule name:** `menu api flood`.
+4. **If incoming requests match:** Field `URI Path`, Operator `equals`, Value `/api/menu`.
+   (Or use the expression editor: `(http.request.uri.path eq "/api/menu")`.)
+5. **With the same characteristics:** `IP` (the only option on Free).
+6. **When rate exceeds:** `20` requests per `10 seconds`. A real visitor loads the menu
+   once per page view, so this leaves plenty of headroom, including several people behind
+   one restaurant Wi-Fi or mobile-carrier IP.
+7. **Then take action:** `Block`, **Duration** `10 seconds` (the Free plan maximum).
+8. Select **Deploy**.
+
+To check it, run a quick loop against the menu URL and watch for `429` responses, then see
+**Security** > **Events** for the matches:
+
+```bash
+for i in $(seq 1 40); do curl -s -o /dev/null -w "%{http_code}\n" https://your-domain.com/api/menu; done
+```
+
+Paid plans allow longer periods and block durations; the steps are the same.
+
 `GET /api/admin/menu/backups` lists the copies written on each publish (newest first);
 `POST /api/admin/menu/restore` with `{ source: "published" }` or `{ source: "backup", key }`
 overwrites the draft from that copy. The editor exposes these as *Discard unsaved changes*,

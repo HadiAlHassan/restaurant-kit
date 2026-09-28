@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import worker, { type Env } from "./index";
 import { hashPassword, SESSION_COOKIE_NAME } from "./auth";
+import { demoSeedMenu } from "../testing/fixtures";
 
 const accessEnv: Env = {
   ADMIN_EMAILS: "owner@demo-restaurant.com",
@@ -252,5 +253,82 @@ describe("static assets passthrough", () => {
 
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toEqual({ error: "Unauthorized.", strategy: "none" });
+  });
+});
+
+function storedMenu(menu: unknown, etag = '"m1"') {
+  return { body: new Response(JSON.stringify(menu)).body, httpEtag: etag, writeHttpMetadata: () => undefined };
+}
+
+describe("public menu caching", () => {
+  it("sends an etag and answers 304 when If-None-Match still matches", async () => {
+    const bucket = { ...accessEnv.MENU_BUCKET, get: vi.fn().mockImplementation(async () => storedMenu(demoSeedMenu)) };
+    const env: Env = { ...accessEnv, MENU_BUCKET: bucket };
+
+    const first = await worker.fetch(new Request("https://demo-restaurant.com/api/menu"), env);
+    expect(first.status).toBe(200);
+    expect(first.headers.get("etag")).toBe('"m1"');
+    expect(first.headers.get("cache-control")).toContain("max-age=0");
+    await expect(first.json()).resolves.toEqual(demoSeedMenu);
+
+    const revalidated = await worker.fetch(new Request("https://demo-restaurant.com/api/menu", { headers: { "if-none-match": 'W/"m1"' } }), env);
+    expect(revalidated.status).toBe(304);
+    expect(await revalidated.text()).toBe("");
+
+    const changed = await worker.fetch(new Request("https://demo-restaurant.com/api/menu", { headers: { "if-none-match": '"m0"' } }), env);
+    expect(changed.status).toBe(200);
+  });
+
+  it("serves edge-cache hits without R2 and adds CORS per request", async () => {
+    const store = new Map<string, Response>();
+    const cache = {
+      match: vi.fn(async (key: Request) => store.get(key.url)?.clone()),
+      put: vi.fn(async (key: Request, response: Response) => void store.set(key.url, response)),
+      delete: vi.fn(async (key: Request) => store.delete(key.url)),
+    };
+    vi.stubGlobal("caches", { default: cache });
+    try {
+      const bucket = { ...accessEnv.MENU_BUCKET, get: vi.fn().mockImplementation(async () => storedMenu(demoSeedMenu)) };
+      const env: Env = { ...accessEnv, MENU_BUCKET: bucket };
+
+      await worker.fetch(new Request("https://demo-restaurant.com/api/menu", { headers: { origin: "https://staging.demo-restaurant.com" } }), env);
+      expect(store.get("https://demo-restaurant.com/api/menu")?.headers.get("access-control-allow-origin")).toBeNull();
+
+      const hit = await worker.fetch(new Request("https://demo-restaurant.com/api/menu", { headers: { origin: "https://demo-restaurant.com" } }), env);
+      expect(bucket.get).toHaveBeenCalledTimes(1);
+      expect(hit.headers.get("access-control-allow-origin")).toBe("https://demo-restaurant.com");
+      await expect(hit.json()).resolves.toEqual(demoSeedMenu);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+describe("publish validation", () => {
+  async function publishWith(draft: unknown) {
+    const env = await passwordEnv();
+    const login = await worker.fetch(jsonRequest("https://demo-restaurant.com/api/admin/login", "POST", { password: "open sesame" }), env);
+    const cookie = (login.headers.get("set-cookie") ?? "").split(";")[0];
+    const bucket = {
+      ...env.MENU_BUCKET,
+      get: vi.fn().mockImplementation(async (key: string) => (key.includes("/draft/") ? storedMenu(draft) : null)),
+      put: vi.fn().mockResolvedValue({ httpEtag: '"p1"' }),
+    };
+    const response = await worker.fetch(jsonRequest("https://demo-restaurant.com/api/admin/menu/publish", "POST", undefined, { cookie, origin: "https://demo-restaurant.com" }), { ...env, MENU_BUCKET: bucket });
+    return { response, bucket };
+  }
+
+  it("publishes a valid draft", async () => {
+    const { response, bucket } = await publishWith(demoSeedMenu);
+    expect(response.status).toBe(200);
+    expect(bucket.put).toHaveBeenCalledWith("restaurants/demo/published/menu.json", expect.any(String), expect.anything());
+  });
+
+  it("refuses an invalid draft with 400 and writes nothing", async () => {
+    const broken = { ...demoSeedMenu, groups: demoSeedMenu.groups.map((group) => ({ ...group, icon: "rocket" })) };
+    const { response, bucket } = await publishWith(broken);
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: expect.stringContaining("groups[0].icon") });
+    expect(bucket.put).not.toHaveBeenCalled();
   });
 });
