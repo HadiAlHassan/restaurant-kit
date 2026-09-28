@@ -1,7 +1,8 @@
 import { buildClearedSessionCookie, getAdminIdentity, getAdminSessionInfo, isTrustedOrigin, loginWithPassword, resolveAdminAuthStrategy, type AuthEnv } from "./auth";
+import { validateMenu } from "../menu/validateMenu";
 import { readBodyWithLimit } from "./body";
 import { getCorsHeaders, getSafeReturnTo, jsonResponse, redirectResponse, RequestError } from "./http";
-import { allowedImageTypes, createMenuStorage, maxImageUploadBytes, type MenuStorage, type R2Bucket, type RestoreSource } from "./menuStorage";
+import { allowedImageTypes, createMenuStorage, maxImageUploadBytes, normalizeEtag, type MenuStorage, type R2Bucket, type RestoreSource } from "./menuStorage";
 
 type AssetsBinding = {
   fetch(request: Request): Promise<Response>;
@@ -48,15 +49,55 @@ async function readFormData(request: Request) {
   }
 }
 
-async function handlePublicMenu(storage: MenuStorage, corsHeaders: Record<string, string>) {
-  const menu = await storage.getPublished();
-  if (!menu) return jsonResponse({ error: "Published menu not found." }, { status: 404 }, corsHeaders);
+// Visitors get the published menu from the data center's edge cache for up to a minute, so a
+// burst of page views costs one R2 read per location instead of one per request. Browsers always
+// revalidate (max-age=0) and get a 304 when their ETag still matches.
+const publicMenuEdgeTtlSeconds = 60;
+const publicMenuCacheControl = `public, max-age=0, must-revalidate, s-maxage=${publicMenuEdgeTtlSeconds}`;
 
-  return jsonResponse(menu, {
-    headers: {
-      "cache-control": "no-store",
-    },
-  }, corsHeaders);
+/** The Workers edge cache, or null outside Workers (tests) — workers.dev hosts accept calls but never hit. */
+function edgeCache(): Cache | null {
+  const storage = (globalThis as { caches?: { default?: Cache } }).caches;
+  return storage?.default ?? null;
+}
+
+function publicMenuCacheKey(request: Request) {
+  return new Request(`${new URL(request.url).origin}/api/menu`);
+}
+
+function ifNoneMatchHits(header: string | null, etag: string) {
+  if (!header) return false;
+  const wanted = normalizeEtag(etag);
+  return header.split(",").some((candidate) => candidate.trim() === "*" || normalizeEtag(candidate) === wanted);
+}
+
+async function handlePublicMenu(request: Request, storage: MenuStorage, corsHeaders: Record<string, string>) {
+  const cache = edgeCache();
+  const cacheKey = publicMenuCacheKey(request);
+  // Cached copies carry no CORS headers; they are added per request below, so one origin's
+  // allow-origin header can never be served to another.
+  let cached = await cache?.match(cacheKey);
+  if (!cached) {
+    const record = await storage.getPublished();
+    if (!record) return jsonResponse({ error: "Published menu not found." }, { status: 404 }, corsHeaders);
+
+    cached = new Response(JSON.stringify(record.menu), {
+      headers: {
+        "content-type": "application/json; charset=utf-8",
+        "cache-control": publicMenuCacheControl,
+        ...(record.etag ? { etag: record.etag } : {}),
+      },
+    });
+    if (cache) await cache.put(cacheKey, cached.clone());
+  }
+
+  const etag = cached.headers.get("etag");
+  if (etag && ifNoneMatchHits(request.headers.get("if-none-match"), etag)) {
+    return new Response(null, { status: 304, headers: { etag, "cache-control": publicMenuCacheControl, ...corsHeaders } });
+  }
+  const headers = new Headers(cached.headers);
+  Object.entries(corsHeaders).forEach(([name, value]) => headers.set(name, value));
+  return new Response(cached.body, { headers });
 }
 
 async function handleAsset(request: Request, storage: MenuStorage, corsHeaders: Record<string, string>) {
@@ -99,7 +140,7 @@ async function handleDraftMenu(request: Request, storage: MenuStorage, corsHeade
 
     const published = await storage.getPublished();
     if (!published) return jsonResponse({ error: "No draft or published menu found." }, { status: 404 }, corsHeaders);
-    return jsonResponse(published, { headers: noStoreHeaders }, corsHeaders);
+    return jsonResponse(published.menu, { headers: noStoreHeaders }, corsHeaders);
   }
 
   if (request.method === "PUT") {
@@ -135,9 +176,20 @@ async function handleRestore(request: Request, storage: MenuStorage, corsHeaders
   return jsonResponse({ ok: true, etag: result.etag }, { headers: { ...noStoreHeaders, ...(result.etag ? { etag: result.etag } : {}) } }, corsHeaders);
 }
 
-async function handlePublish(storage: MenuStorage, corsHeaders: Record<string, string>) {
-  const result = await storage.publishDraft();
+/** Full check before a menu goes live; drafts only get the shallow shape check so mid-edit states still save. */
+function assertPublishable(menu: unknown) {
+  const issues = validateMenu(menu);
+  if (!issues.length) return;
+  const listed = issues.slice(0, 5).map((issue) => `${issue.path || "(root)"}: ${issue.message}`).join("; ");
+  const more = issues.length > 5 ? ` (and ${issues.length - 5} more)` : "";
+  throw new RequestError(`The menu can't be published yet: ${listed}${more}`, 400);
+}
+
+async function handlePublish(request: Request, storage: MenuStorage, corsHeaders: Record<string, string>) {
+  const result = await storage.publishDraft({ validate: assertPublishable });
   if (result.status === "no-draft") return jsonResponse({ error: "Draft menu not found." }, { status: 404 }, corsHeaders);
+  // Only purges this data center; others pick up the new menu within publicMenuEdgeTtlSeconds.
+  await edgeCache()?.delete(publicMenuCacheKey(request));
 
   return jsonResponse({ ok: true, backupKey: result.backupKey }, undefined, corsHeaders);
 }
@@ -204,7 +256,7 @@ export default {
 
     try {
       if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
-      if (request.method === "GET" && url.pathname === "/api/menu") return await handlePublicMenu(storage, corsHeaders);
+      if (request.method === "GET" && url.pathname === "/api/menu") return await handlePublicMenu(request, storage, corsHeaders);
       if (request.method === "GET" && url.pathname.startsWith("/api/assets/")) return await handleAsset(request, storage, corsHeaders);
       if (request.method === "GET" && url.pathname === "/api/admin/sign-in") return redirectResponse(getSafeReturnTo(request, env), corsHeaders);
       if (request.method === "GET" && url.pathname === "/api/admin/session") return await handleSession(request, env, corsHeaders);
@@ -222,7 +274,7 @@ export default {
       }
 
       if (url.pathname === "/api/admin/menu/draft") return await handleDraftMenu(request, storage, corsHeaders);
-      if (request.method === "POST" && url.pathname === "/api/admin/menu/publish") return await handlePublish(storage, corsHeaders);
+      if (request.method === "POST" && url.pathname === "/api/admin/menu/publish") return await handlePublish(request, storage, corsHeaders);
       if (request.method === "GET" && url.pathname === "/api/admin/menu/backups") return await handleBackups(storage, corsHeaders);
       if (request.method === "POST" && url.pathname === "/api/admin/menu/restore") return await handleRestore(request, storage, corsHeaders);
       if (request.method === "POST" && url.pathname === "/api/admin/images") return await handleImageUpload(request, storage, corsHeaders);

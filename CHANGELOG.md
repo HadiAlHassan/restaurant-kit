@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0 — 2026-09-28
+
+- Worker: publishing validates the draft with `validateMenu` and refuses an invalid menu with
+  a 400 listing the issues. Draft saves keep the shallow shape check.
+- Worker: `GET /api/menu` sends an `ETag` (304 on `If-None-Match`) and is edge-cached for 60 s
+  on custom domains; publish purges the local data center's copy. CORS headers are added per
+  request, never cached.
+- Site: the public menu fetch uses `cache: "no-cache"` so the browser revalidates with the ETag.
+
 ## 0.2.1 — 2026-09-28
 
 - Worker: request bodies are size-capped before parsing (2 MB menu JSON, 5 MB image upload,

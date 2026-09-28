@@ -59,12 +59,13 @@ export type DraftRecord = {
 export type SaveDraftResult = { readonly status: "saved"; readonly etag: string | null } | { readonly status: "conflict" };
 
 export type MenuStorage = {
-  readonly getPublished: () => Promise<unknown | null>;
+  readonly getPublished: () => Promise<DraftRecord | null>;
   readonly getDraft: () => Promise<DraftRecord | null>;
   readonly getAsset: (key: string) => Promise<R2Object | null>;
   /** With `ifMatch`, the write only lands when the stored draft still carries that etag. */
   readonly saveDraft: (menu: object, options?: { readonly ifMatch?: string | null }) => Promise<SaveDraftResult>;
-  readonly publishDraft: () => Promise<PublishResult>;
+  /** `validate` runs on the stored draft before anything is written; throw to refuse the publish. */
+  readonly publishDraft: (options?: { readonly validate?: (draft: unknown) => void }) => Promise<PublishResult>;
   readonly uploadImage: (file: File) => Promise<{ key: string }>;
   readonly deleteImage: (key: string) => Promise<boolean>;
   /** Backups written by publishDraft, newest first. */
@@ -137,7 +138,7 @@ async function writeJsonObject(bucket: R2Bucket, key: string, value: unknown, on
 
 export function createMenuStorage(bucket: R2Bucket, restaurantId: string): MenuStorage {
   return {
-    getPublished: () => readJsonObject(bucket, menuKeys(restaurantId).published),
+    getPublished: () => readJsonRecord(bucket, menuKeys(restaurantId).published),
     getDraft: () => readJsonRecord(bucket, menuKeys(restaurantId).draft),
     // Only objects under this restaurant's image prefix are servable; the draft menu, backups,
     // and other tenants' keys must stay unreachable through /api/assets/*.
@@ -151,10 +152,11 @@ export function createMenuStorage(bucket: R2Bucket, restaurantId: string): MenuS
       if (!written) return { status: "conflict" };
       return { status: "saved", etag: written.etag };
     },
-    publishDraft: async () => {
+    publishDraft: async (options = {}) => {
       const keys = menuKeys(restaurantId);
       const draft = await readJsonObject(bucket, keys.draft);
       if (!draft) return { status: "no-draft" };
+      options.validate?.(draft);
 
       const published = await readJsonObject(bucket, keys.published);
       if (published) await writeJsonObject(bucket, keys.backup, published);

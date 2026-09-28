@@ -374,6 +374,16 @@ image prefix; served with a content type from the image allowlist or as an opaqu
 `GET /api/admin/sign-in` (Access redirect), `GET|PUT /api/admin/menu/draft`,
 `POST /api/admin/menu/publish`, `POST|DELETE /api/admin/images`.
 
+Publishing runs the same `validateMenu` check as your seed data and refuses (400, listing the
+first issues) a draft that would break the public site, e.g. an unknown icon or a "sizes" item
+with no sizes. Draft saves only get a shallow shape check, so half-finished edits still save.
+
+`GET /api/menu` is cached at the edge for up to 60 seconds (custom domains only; `workers.dev`
+has no edge cache) and carries an `ETag`, so returning visitors get a `304`. Publishing purges
+the cache in the data center that handled the publish; others catch up within the minute.
+Cached hits still count as Worker requests. If you worry about someone looping on the menu
+URL to exhaust a free-plan quota, add a Cloudflare WAF rate-limiting rule on `/api/menu`.
+
 `GET /api/admin/menu/backups` lists the copies written on each publish (newest first);
 `POST /api/admin/menu/restore` with `{ source: "published" }` or `{ source: "backup", key }`
 overwrites the draft from that copy. The editor exposes these as *Discard unsaved changes*,

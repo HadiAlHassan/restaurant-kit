@@ -66,7 +66,7 @@ describe("menu json storage", () => {
     const { bucket } = createFakeBucket({ [publishedKey]: publishedMenu, [draftKey]: draftMenu });
     const storage = createMenuStorage(bucket, "demo");
 
-    expect(await storage.getPublished()).toEqual(publishedMenu);
+    expect(await storage.getPublished()).toEqual({ menu: publishedMenu, etag: expect.anything() });
     expect(await storage.getDraft()).toEqual({ menu: draftMenu, etag: '"v2"' });
   });
 
@@ -119,6 +119,15 @@ describe("publishDraft", () => {
     const storage = createMenuStorage(bucket, "demo");
 
     expect(await storage.publishDraft()).toEqual({ status: "no-draft" });
+  });
+
+  it("runs validate before writing anything and lets it refuse the publish", async () => {
+    const { bucket, objects } = createFakeBucket({ [draftKey]: draftMenu, [publishedKey]: publishedMenu });
+    const storage = createMenuStorage(bucket, "demo");
+    const before = new Map(objects);
+
+    await expect(storage.publishDraft({ validate: () => { throw new Error("invalid"); } })).rejects.toThrow("invalid");
+    expect(objects).toEqual(before);
   });
 
   it("publishes without a backup when nothing was published before", async () => {
